@@ -24,14 +24,14 @@ function insertTable() {
 	border = formObj.elements['border'].value != "" ? formObj.elements['border'].value  : 0;
 	cellpadding = formObj.elements['cellpadding'].value != "" ? formObj.elements['cellpadding'].value : "";
 	cellspacing = formObj.elements['cellspacing'].value != "" ? formObj.elements['cellspacing'].value : "";
-	align = getSelectValue(formObj, "align");
-	frame = getSelectValue(formObj, "tframe");
-	rules = getSelectValue(formObj, "rules");
+	align = formObj.elements['align'].options[formObj.elements['align'].selectedIndex].value;
+	frame = formObj.elements['tframe'].options[formObj.elements['tframe'].selectedIndex].value;
+	rules = formObj.elements['rules'].options[formObj.elements['rules'].selectedIndex].value;
 	width = formObj.elements['width'].value;
 	height = formObj.elements['height'].value;
 	bordercolor = formObj.elements['bordercolor'].value;
 	bgcolor = formObj.elements['bgcolor'].value;
-	className = getSelectValue(formObj, "class");
+	className = formObj.elements['class'].options[formObj.elements['class'].selectedIndex].value;
 	id = formObj.elements['id'].value;
 	summary = formObj.elements['summary'].value;
 	style = formObj.elements['style'].value;
@@ -82,7 +82,7 @@ function insertTable() {
 			capEl = elm.ownerDocument.createElement('caption');
 
 			if (!tinymce.isIE)
-				capEl.innerHTML = '<br _mce_bogus="1"/>';
+				capEl.innerHTML = '<br mce_bogus="1"/>';
 
 			elm.insertBefore(capEl, elm.firstChild);
 		}
@@ -151,7 +151,6 @@ function insertTable() {
 	html += makeAttrib('border', border);
 	html += makeAttrib('cellpadding', cellpadding);
 	html += makeAttrib('cellspacing', cellspacing);
-	html += makeAttrib('_mce_new', '1');
 
 	if (width && inst.settings.inline_styles) {
 		if (style)
@@ -187,7 +186,7 @@ function insertTable() {
 
 	if (caption) {
 		if (!tinymce.isIE)
-			html += '<caption><br _mce_bogus="1"/></caption>';
+			html += '<caption><br mce_bogus="1"/></caption>';
 		else
 			html += '<caption></caption>';
 	}
@@ -197,7 +196,7 @@ function insertTable() {
 
 		for (var x=0; x<cols; x++) {
 			if (!tinymce.isIE)
-				html += '<td><br _mce_bogus="1"/></td>';
+				html += '<td><br mce_bogus="1"/></td>';
 			else
 				html += '<td></td>';
 		}
@@ -211,10 +210,9 @@ function insertTable() {
 
 	// Move table
 	if (inst.settings.fix_table_elements) {
-		var patt = '';
+		var bm = inst.selection.getBookmark(), patt = '';
 
-		inst.focus();
-		inst.selection.setContent('<br class="_mce_marker" />');
+		inst.execCommand('mceInsertContent', false, '<br class="_mce_marker" />');
 
 		tinymce.each('h1,h2,h3,h4,h5,h6,p'.split(','), function(n) {
 			if (patt)
@@ -227,23 +225,11 @@ function insertTable() {
 			inst.dom.split(inst.dom.getParent(n, 'h1,h2,h3,h4,h5,h6,p'), n);
 		});
 
-		dom.setOuterHTML(dom.select('br._mce_marker')[0], html);
+		dom.setOuterHTML(dom.select('._mce_marker')[0], html);
+
+		inst.selection.moveToBookmark(bm);
 	} else
 		inst.execCommand('mceInsertContent', false, html);
-
-	tinymce.each(dom.select('table[_mce_new]'), function(node) {
-		var td = dom.select('td', node);
-
-		try {
-			// IE9 might fail to do this selection
-			inst.selection.select(td[0], true);
-			inst.selection.collapse();
-		} catch (ex) {
-			// Ignore
-		}
-
-		dom.setAttrib(node, '_mce_new', '');
-	});
 
 	inst.addVisual();
 	inst.execCommand('mceEndUndoLevel');
@@ -284,7 +270,7 @@ function init() {
 
 	var cols = 2, rows = 2, border = tinyMCEPopup.getParam('table_default_border', '0'), cellpadding = tinyMCEPopup.getParam('table_default_cellpadding', ''), cellspacing = tinyMCEPopup.getParam('table_default_cellspacing', '');
 	var align = "", width = "", height = "", bordercolor = "", bgcolor = "", className = "";
-	var id = "", summary = "", style = "", dir = "", lang = "", background = "", bgcolor = "", bordercolor = "", rules = "", frame = "";
+	var id = "", summary = "", style = "", dir = "", lang = "", background = "", bgcolor = "", bordercolor = "", rules, frame;
 	var inst = tinyMCEPopup.editor, dom = inst.dom;
 	var formObj = document.forms[0];
 	var elm = dom.getParent(inst.selection.getNode(), "table");
@@ -321,7 +307,7 @@ function init() {
 		style = dom.serializeStyle(st);
 		dir = dom.getAttrib(elm, 'dir');
 		lang = dom.getAttrib(elm, 'lang');
-		background = getStyle(elm, 'background', 'backgroundImage').replace(new RegExp("url\\(['\"]?([^'\"]*)['\"]?\\)", 'gi'), "$1");
+		background = getStyle(elm, 'background', 'backgroundImage').replace(new RegExp("url\\('?([^']*)'?\\)", 'gi'), "$1");
 		formObj.caption.checked = elm.getElementsByTagName('caption').length > 0;
 
 		orgTableWidth = width;
@@ -430,7 +416,7 @@ function changedStyle() {
 	var st = dom.parseStyle(formObj.style.value);
 
 	if (st['background-image'])
-		formObj.backgroundimage.value = st['background-image'].replace(new RegExp("url\\(['\"]?([^'\"]*)['\"]?\\)", 'gi'), "$1");
+		formObj.backgroundimage.value = st['background-image'].replace(new RegExp("url\\('?([^']*)'?\\)", 'gi'), "$1");
 	else
 		formObj.backgroundimage.value = '';
 
