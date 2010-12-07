@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -78,9 +79,10 @@ class CRM_Core_OptionValue
     {
         $optionValue = array();
         
+        $optionGroupID = null;
         if (! isset( $groupParams['id'] ) || ! $groupParams['id'] ) {
             if ( $groupParams['name'] ) {
-                $config =& CRM_Core_Config::singleton( );
+                $config = CRM_Core_Config::singleton( );
                 
                 $optionGroup = CRM_Core_BAO_OptionGroup::retrieve($groupParams, $dnc);
                 $optionGroupID = $optionGroup->id;
@@ -89,14 +91,31 @@ class CRM_Core_OptionValue
             $optionGroupID = $groupParams['id'];
         }
         
-        $dao =& new CRM_Core_DAO_OptionValue();
+        $groupName = CRM_Utils_Array::value( 'name', $groupParams );
+        if ( !$groupName && $optionGroupID ) {
+            $groupName = CRM_Core_DAO::getFieldValue( 'CRM_Core_DAO_OptionGroup', 
+                                                      $optionGroupID, 'name', 'id' );
+        }
+        
+        $dao = new CRM_Core_DAO_OptionValue();
         
         if ( $optionGroupID ) {
             $dao->option_group_id = $optionGroupID;
+
+            require_once 'CRM/Core/OptionGroup.php';
+            if ( in_array( $groupName, CRM_Core_OptionGroup::$_domainIDGroups ) ) {
+                $dao->domain_id = CRM_Core_Config::domainID( );
+            }
+            
             $dao->orderBy($orderBy);
             $dao->find();
         }
         
+        if ( $groupName == 'case_type' ) {
+            require_once 'CRM/Case/BAO/Case.php';
+            $caseTypeIds = CRM_Case_BAO_Case::getUsedCaseType( );
+        }
+
         require_once 'CRM/Core/Component.php';
         $componentNames = CRM_Core_Component::getNames();
         $visibilityLabels = CRM_Core_PseudoConstant::visibility( );
@@ -105,11 +124,7 @@ class CRM_Core_OptionValue
             CRM_Core_DAO::storeValues( $dao, $optionValue[$dao->id] );
             // form all action links
             $action = array_sum(array_keys($links));
-         
-            if( $dao->is_default ) {
-                $optionValue[$dao->id]['default_value'] = '[x]';
-            }
-            
+                     
             // update enable/disable links depending on if it is is_reserved or is_active
             if ( $dao->is_reserved ) {
                 $action = CRM_Core_Action::UPDATE;
@@ -120,7 +135,13 @@ class CRM_Core_OptionValue
                     $action -= CRM_Core_Action::DISABLE;
                 }
             }
+
+            if ( ( $groupName == 'case_type' ) && in_array( $dao->value, $caseTypeIds ) ) {
+                $action -= CRM_Core_Action::DELETE;
+            }
+
             $optionValue[$dao->id]['label']  = htmlspecialchars( $optionValue[$dao->id]['label'] );
+            $optionValue[$dao->id]['order']  = $optionValue[$dao->id]['weight'];
             $optionValue[$dao->id]['action'] = CRM_Core_Action::formLink($links, $action, 
                                                                          array('id'    => $dao->id,
                                                                                'gid'   => $optionGroupID,
@@ -137,6 +158,7 @@ class CRM_Core_OptionValue
             }
 
         }
+        
         return $optionValue;
     }
 
@@ -155,10 +177,11 @@ class CRM_Core_OptionValue
      */
     static function addOptionValue( &$params, &$groupParams, &$action, &$optionValueID ) 
     {
+        require_once 'CRM/Utils/Weight.php';        
         $params['is_active'] =  CRM_Utils_Array::value( 'is_active', $params, false );
         // checking if the group name with the given id or name (in $groupParams) exists
         if (! empty($groupParams)) {
-            $config =& CRM_Core_Config::singleton( );
+            $config = CRM_Core_Config::singleton( );
             $groupParams['is_active']   = 1;
             $optionGroup = CRM_Core_BAO_OptionGroup::retrieve($groupParams, $defaults);
         }
@@ -177,7 +200,6 @@ class CRM_Core_OptionValue
                 $oldWeight = CRM_Core_DAO::getFieldValue( 'CRM_Core_DAO_OptionValue', $optionValueID, 'weight', 'id' );
             }
             $fieldValues = array('option_group_id' => $optionGroupID);
-            require_once 'CRM/Utils/Weight.php';        
             $params['weight'] =
                 CRM_Utils_Weight::updateOtherWeights('CRM_Core_DAO_OptionValue', $oldWeight, $params['weight'], $fieldValues);
         }
@@ -224,7 +246,7 @@ class CRM_Core_OptionValue
     static function optionExists( $value, $daoName, $daoID, $optionGroupID, $fieldName = 'name' ) 
     {
         require_once(str_replace('_', DIRECTORY_SEPARATOR, $daoName) . ".php");
-        eval( '$object =& new ' . $daoName . '( );' );
+        eval( '$object = new ' . $daoName . '( );' );
         $object->$fieldName      = $value;
         $object->option_group_id = $optionGroupID;
 
@@ -248,60 +270,83 @@ class CRM_Core_OptionValue
      * @access public
      * @static
      */
-    static function getFields( $mode = '') 
+    static function getFields( $mode = '', $contactType = 'Individual' ) 
     {
-        if ( !self::$_fields || ! CRM_Utils_Array::value( $mode, self::$_fields ) || $mode) {
-            if ( !self::$_fields ) {
-                self::$_fields = array();
-            }
-            require_once "CRM/Core/DAO/OptionValue.php";
+        $key = "$mode $contactType";    
+        if ( empty( self::$_fields[$key] ) || !self::$_fields[$key] ) {
+            self::$_fields[$key] = array( );
+
+            require_once "CRM/Core/DAO/OptionValue.php";  
             $option = CRM_Core_DAO_OptionValue::import( );
-            
+
             foreach (array_keys( $option ) as $id ) {
                 $optionName = $option[$id];
             }
             
-            if( $mode == 'contribute' ) {
+            $nameTitle = array( );
+            if ( $mode == 'contribute' ) {
                 $nameTitle = array('payment_instrument' => array('name' =>'payment_instrument',
                                                                  'title'=> 'Payment Instrument',
                                                                  'headerPattern' => '/^payment|(p(ayment\s)?instrument)$/i'
                                                                  )
                                    );
-            } else if ( $mode == '' ) {
-                $nameTitle = array('gender'            => array('name' => 'gender',
-                                                                'title'=> 'Gender',
-                                                                'headerPattern' => '/^gender$/i'
-                                                                ),
-                                   'individual_prefix' => array('name' => 'individual_prefix',
-                                                                'title'=> 'Individual Prefix',
-                                                                'headerPattern' => '/^(prefix|title)/i'
-                                                                ),
-                                   'individual_suffix' => array('name' => 'individual_suffix',
-                                                                'title'=> 'Individual Suffix',
-                                                                'headerPattern' => '/^suffix$/i'
-                                                                ),
-                                   'greeting_type' => array('name' => 'greeting_type',
-                                                            'title'=> 'Greeting Type'
-                                                                )                                     
-                                   );
-            }
+            } else if ( $mode == '' ) {  
+                //the fields email greeting and postal greeting are meant only for Individual and Household
+                //the field addressee is meant for all contact types, CRM-4575
+                if ( in_array($contactType, array('Individual', 'Household', 'Organization', 'All') ) ) {
+                    $nameTitle = array( 'addressee'     => array('name' => 'addressee',
+                                                                 'title'=> 'Addressee',
+                                                                 'headerPattern' => '/^addressee$/i'
+                                                                 ),
+                                        );
+                }
+                if ( $contactType == 'Individual' || $contactType == 'Household' || $contactType == 'All' ) {
+                    $title = array( 'email_greeting'    => array('name' => 'email_greeting',
+                                                                 'title'=> 'Email Greeting',
+                                                                 'headerPattern' => '/^email_greeting$/i'
+                                                                 ),  
+                                    'postal_greeting'   => array('name' => 'postal_greeting',
+                                                                 'title'=> 'Postal Greeting',
+                                                                 'headerPattern' => '/^postal_greeting$/i'
+                                                                 ),
+                                    );
+                    $nameTitle = array_merge( $nameTitle, $title );
+                }
 
-            if ( is_array( $nameTitle ) ) {
+                if ( $contactType == 'Individual' || $contactType == 'All') {
+                    $title = array( 'gender'            => array('name' => 'gender',
+                                                                 'title'=> 'Gender',
+                                                                 'headerPattern' => '/^gender$/i'
+                                                                 ),
+                                    'individual_prefix' => array('name' => 'individual_prefix',
+                                                                 'title'=> 'Individual Prefix',
+                                                                 'headerPattern' => '/^(prefix|title)/i'
+                                                                 ),
+                                    'individual_suffix' => array('name' => 'individual_suffix',
+                                                                 'title'=> 'Individual Suffix',
+                                                                 'headerPattern' => '/^suffix$/i'
+                                                                 ),
+                                    );
+                    $nameTitle = array_merge( $nameTitle, $title ); 
+                }
+            }
+            
+            if ( is_array( $nameTitle ) ) {   
                 foreach ( $nameTitle as $name => $attribs ) {
-                    self::$_fields[$mode][$name] = $optionName;
+                    self::$_fields[$key][$name] = $optionName;
                     list( $tableName, $fieldName ) = explode( '.', $optionName['where'] );  
                     // not sure of this fix, so keeping it commented for now
                     // this is from CRM-1541
                     // self::$_fields[$mode][$name]['where'] = $name . '.' . $fieldName;
-                    self::$_fields[$mode][$name]['where'] = "{$name}.label";
-                    foreach ( $attribs as $key => $val ) {
-                        self::$_fields[$mode][$name][$key] = $val;
+                    self::$_fields[$key][$name]['where'] = "{$name}.label";
+                    foreach ( $attribs as $k => $val ) {
+                        self::$_fields[$key][$name][$k] = $val;
                     }
                 }
             }
         }
-
-        return self::$_fields[$mode];
+        
+        return self::$_fields[$key];
     }
     
     /** 
@@ -344,6 +389,9 @@ class CRM_Core_OptionValue
      */
     static function getValues( $groupParams, &$values, $orderBy = 'weight', $isActive = false ) 
     {
+        if ( empty ( $groupParams ) ) {
+            return null;
+        }
         $select = "
 SELECT 
    option_value.id          as id,
@@ -368,14 +416,26 @@ FROM
                 
         $order = " ORDER BY " . $orderBy;
         
-        if ( CRM_Utils_Array::value( 'id', $groupParams ) ) {
+        $groupId   = CRM_Utils_Array::value( 'id', $groupParams );
+        $groupName = CRM_Utils_Array::value( 'name', $groupParams );
+        
+        if ( $groupId ) {
             $where .= " AND option_group.id = %1";
-            $params[1] = array( $groupParams['id'], 'Integer' );
+            $params[1] = array( $groupId, 'Integer' );
+            if ( !$groupName ) {
+                $groupName = CRM_Core_DAO::getFieldValue( 'CRM_Core_DAO_OptionGroup', 
+                                                          $groupId, 'name', 'id' );
+            }
         }
         
-        if ( CRM_Utils_Array::value( 'name', $groupParams ) ) {
+        if ( $groupName ) {
             $where .= " AND option_group.name = %2";
-            $params[2] = array( $groupParams['name'], 'String' );
+            $params[2] = array( $groupName, 'String' );
+        }
+        
+        require_once 'CRM/Core/OptionGroup.php';
+        if ( in_array( $groupName, CRM_Core_OptionGroup::$_domainIDGroups ) ) {
+            $where .= " AND option_value.domain_id = " . CRM_Core_Config::domainID( );
         }
         
         $query = $select . $from . $where . $order;

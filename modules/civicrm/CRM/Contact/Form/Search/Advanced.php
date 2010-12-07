@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -56,6 +57,7 @@ class CRM_Contact_Form_Search_Advanced extends CRM_Contact_Form_Search
      */
     function buildQuickForm( )
     {
+        $this->set('context', 'advanced' );
         require_once 'CRM/Contact/Form/Search/Criteria.php';
 
         $this->_searchPane = CRM_Utils_Array::value( 'searchPane', $_GET );
@@ -79,7 +81,8 @@ class CRM_Contact_Form_Search_Advanced extends CRM_Contact_Form_Search
 
         //check if there are any custom data searchable fields
         $groupDetails = array( );
-        $extends      = array( 'Contact', 'Individual', 'Household', 'Organization' );
+        $extends      = array_merge( array( 'Contact', 'Individual', 'Household', 'Organization' ),
+                                     CRM_Contact_BAO_ContactType::subTypes( ) );
         $groupDetails = CRM_Core_BAO_CustomGroup::getGroupDetail( null, true,
                                                                   $extends );
         // if no searchable fields unset panel
@@ -108,7 +111,7 @@ class CRM_Contact_Form_Search_Advanced extends CRM_Contact_Form_Search
 
         require_once 'CRM/Utils/Sort.php';
         usort( $componentPanes, array( 'CRM_Utils_Sort', 'cmpFunc' ) );
-
+       
         foreach( $componentPanes as $name => $pane ) {
                 // FIXME: we should change the use of $name here
                 // FIXME: to keyword
@@ -122,7 +125,7 @@ class CRM_Contact_Form_Search_Advanced extends CRM_Contact_Form_Search
             }
 
             $allPanes[$name] = array( 'url' => CRM_Utils_System::url( 'civicrm/contact/search/advanced',
-                                                                      "snippet=1&searchPane=$type" ),
+                                                                      "snippet=1&searchPane=$type&qfKey={$this->controller->_key}" ),
                                       'open' => 'false',
                                       'id'   => $type );
             
@@ -131,7 +134,7 @@ class CRM_Contact_Form_Search_Advanced extends CRM_Contact_Form_Search
                  CRM_Utils_Array::value( "hidden_{$type}", $_POST ) ||
                  CRM_Utils_Array::value( "hidden_{$type}", $this->_formValues ) ) {
                 $allPanes[$name]['open'] = 'true';
-
+                
                 if ( CRM_Utils_Array::value( $type, $components ) ) {
                     $c = $components[ $type ];
                     $this->add( 'hidden', "hidden_$type" , 1 );
@@ -139,23 +142,19 @@ class CRM_Contact_Form_Search_Advanced extends CRM_Contact_Form_Search
                     $this->_paneTemplatePath[$type] = $c->getAdvancedSearchPaneTemplatePath();                
                 } else {
                     eval( 'CRM_Contact_Form_Search_Criteria::' . $type . '( $this );' );
-                    $name = ucfirst( $type );
-                    $this->_paneTemplatePath[$type] = "CRM/Contact/Form/Search/Criteria/{$name}.tpl";
+                    $template = ucfirst( $type );
+                    $this->_paneTemplatePath[$type] = "CRM/Contact/Form/Search/Criteria/{$template}.tpl";
                 }
             }
-        }                
-
+        }               
         $this->assign( 'allPanes', $allPanes );
-
-        $this->assign( 'dojoIncludes', "dojo.require('civicrm.TitlePane');dojo.require('dojo.parser');" );
-
         if ( ! $this->_searchPane ) {
             parent::buildQuickForm();
         } else {
             $this->assign( 'suppressForm', true );
         }
     }
-
+    
     function getTemplateFileName() {
         if ( ! $this->_searchPane ) {
             return parent::getTemplateFileName( );
@@ -205,12 +204,13 @@ class CRM_Contact_Form_Search_Advanced extends CRM_Contact_Form_Search
      */
     function postProcess( ) 
     {
-        $session =& CRM_Core_Session::singleton();
-        $session->set('isAdvanced', '1');
+        $this->set('isAdvanced', '1');
+        
         // get user submitted values
         // get it from controller only if form has been submitted, else preProcess has set this
         if ( ! empty( $_POST ) ) {
             $this->_formValues = $this->controller->exportValues( $this->_name );
+            $this->normalizeFormValues( );
             // FIXME: couldn't figure out a good place to do this,
             // FIXME: so leaving this as a dependency for now
             if ( array_key_exists(  'contribution_amount_low', $this->_formValues ) ) {
@@ -218,17 +218,13 @@ class CRM_Contact_Form_Search_Advanced extends CRM_Contact_Form_Search
                     $this->_formValues[$f] = CRM_Utils_Rule::cleanMoney( $this->_formValues[$f] );
                 }
             }
-          
+            
             // set the group if group is submitted
             if ($this->_formValues['uf_group_id']) {
                 $this->set( 'id', $this->_formValues['uf_group_id'] );
             } else {
                 $this->set( 'id', '' );
             }
-            
-            // also reset the sort by character 
-            $this->_sortByCharacter = null;
-            $this->set( 'sortByCharacter', null );
         }
 
         // retrieve ssID values only if formValues is null, i.e. form has never been posted
@@ -239,7 +235,8 @@ class CRM_Contact_Form_Search_Advanced extends CRM_Contact_Form_Search
         if ( isset( $this->_groupID ) && ! CRM_Utils_Array::value( 'group', $this->_formValues ) ) {
             $this->_formValues['group'] = array( $this->_groupID => 1 );
         }
-
+        
+	    
         //search for civicase
         if ( is_array( $this->_formValues ) ) {
             if ( array_key_exists('case_owner', $this->_formValues ) && 
@@ -271,6 +268,61 @@ class CRM_Contact_Form_Search_Advanced extends CRM_Contact_Form_Search
         parent::postProcess( );
     }
     
+    /**
+     * normalize the form values to make it look similar to the advanced form values
+     * this prevents a ton of work downstream and allows us to use the same code for
+     * multiple purposes (queries, save/edit etc)
+     *
+     * @return void
+     * @access private
+     */
+    function normalizeFormValues( ) {
+        $contactType = CRM_Utils_Array::value( 'contact_type', $this->_formValues );
+        
+        if ( $contactType && is_array( $contactType ) ) {
+            unset( $this->_formValues['contact_type'] );
+            foreach( $contactType as $key => $value ) {
+                $this->_formValues['contact_type'][$value] = 1;
+            }
+        }
+
+        $config = CRM_Core_Config::singleton( );
+        if ( !$config->groupTree ) {
+            $group = CRM_Utils_Array::value( 'group', $this->_formValues );
+            if ( $group && is_array( $group ) ) {
+                unset( $this->_formValues['group'] );
+                foreach( $group as $key => $value ) {
+                    $this->_formValues['group'][$value] = 1;
+                }
+            }
+        }
+
+        $tag = CRM_Utils_Array::value( 'contact_tags', $this->_formValues );
+        if ( $tag && is_array( $tag ) ) {
+            unset( $this->_formValues['contact_tags'] );
+            foreach( $tag as $key => $value ) {
+                $this->_formValues['contact_tags'][$value] = 1;
+            }
+        }
+        
+        $taglist = CRM_Utils_Array::value( 'taglist', $this->_formValues );
+        
+        if ( $taglist && is_array( $taglist ) ) {
+            unset( $this->_formValues['taglist'] );
+            foreach( $taglist as $value ) {
+                if ( $value ) {
+                    $value = explode(',', $value );
+                    foreach( $value as $tId ) {
+                        if ( is_numeric( $tId ) ) {
+                            $this->_formValues['contact_tags'][$tId] = 1;
+                        }
+                    }
+                }
+            }            
+        }
+
+        return;
+    }
 }
 
 

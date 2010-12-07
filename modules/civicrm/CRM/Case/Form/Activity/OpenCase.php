@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -41,13 +42,27 @@ require_once "CRM/Custom/Form/CustomData.php";
  */
 class CRM_Case_Form_Activity_OpenCase
 {
+    /**
+     * the id of the client associated with this case
+     *
+     * @var int
+     * @public
+     */
+    public $_contactID;
+    
     static function preProcess( &$form ) 
     {   
+        //get multi client case configuration
+        require_once 'CRM/Case/XMLProcessor/Process.php';
+        $xmlProcessorProcess = new CRM_Case_XMLProcessor_Process( );
+        $form->_allowMultiClient = (bool)$xmlProcessorProcess->getAllowMultipleCaseClients( );
+        
         if ( $form->_context == 'caseActivity' ) {
             return;
         }
-        $form->_createNewButtonName      = $form->getButtonName( 'next'   , 'createNew' );
-        $form->_assignExistingButtonName = $form->getButtonName( 'next'   , 'assignExisting' );
+        $form->_context   = CRM_Utils_Request::retrieve( 'context', 'String', $form );
+        $form->_contactID = CRM_Utils_Request::retrieve( 'cid', 'Positive', $form );
+        $form->assign( 'context', $form->_context );
     }
 
    /**
@@ -64,8 +79,8 @@ class CRM_Case_Form_Activity_OpenCase
             return $defaults;
         }
 
-        $defaults['start_date'] = array();
-        CRM_Utils_Date::getAllDefaultValues( $defaults['start_date'] );
+        require_once 'CRM/Utils/Date.php';
+        list( $defaults['start_date'] ) = CRM_Utils_Date::setDateDefaults( );
         
         // set case status to 'ongoing'
         $defaults['status_id'] = 1;
@@ -96,7 +111,10 @@ class CRM_Case_Form_Activity_OpenCase
         if ( $form->_context == 'caseActivity' ) {
             return;
         }
-
+        if ( $form->_context == 'standalone' ) {
+            require_once 'CRM/Contact/Form/NewContact.php';
+            CRM_Contact_Form_NewContact::buildQuickForm( $form );
+        }
         require_once 'CRM/Core/OptionGroup.php';        
         $caseType = CRM_Core_OptionGroup::values('case_type');
         $form->add('select', 'case_type_id',  ts( 'Case Type' ),  
@@ -113,73 +131,10 @@ class CRM_Case_Form_Activity_OpenCase
         if ( $form->_currentlyViewedContactId ) {
             list( $displayName ) = CRM_Contact_BAO_Contact::getDisplayAndImage( $form->_currentlyViewedContactId );
             $form->assign( 'clientName', $displayName );
-        } else {
-            $attributes = CRM_Core_DAO::getAttribute( 'CRM_Contact_DAO_Contact' );
-            $form->addElement('select', 'prefix_id', ts('Prefix'), 
-                              array('' => ts('- prefix -')) + CRM_Core_PseudoConstant::individualPrefix());
-            $form->addElement('select', 'suffix_id', ts('Suffix'), 
-                              array('' => ts('- suffix -')) + CRM_Core_PseudoConstant::individualSuffix());
-            $form->addElement('text',   'first_name',  ts('First Name'),  
-                              $attributes['first_name'] );
-            $form->addElement('text',   'last_name',   ts('Last Name'),   
-                              $attributes['last_name'] );
-            // radio button for gender
-            $genderOptions = array( );
-            $gender =CRM_Core_PseudoConstant::gender();
-            foreach ($gender as $key => $var) {
-                $genderOptions[$key] = HTML_QuickForm::createElement('radio', null, ts('Gender'), $var, $key);
-            }
-            $form->addGroup($genderOptions, 'gender_id', ts('Gender'));
-
-            $form->addElement('date', 'birth_date', ts('Date of birth'), CRM_Core_SelectValues::date('birth'));
-            $form->addRule('birth_date', ts('Select a valid date.'), 'qfDate');  
-            
-            //Primary Phone 
-            $locType = CRM_Core_PseudoConstant::locationType( );
-            $form->addElement('select',
-                              "location[1][location_type_id]", null,  array( '' => ts( '- location -' ) ) + $locType );
-            
-            $phoneType = CRM_Core_PseudoConstant::phoneType( );
-            
-            $form->addElement('select',
-                              "location[1][phone][1][phone_type_id]",
-                              null,
-                              array('' =>  ts('- type -'))+$phoneType,
-                              null
-                              );
-            $form->addElement('text',
-                              "location[1][phone][1][phone]", 
-                              ts('Primary Phone'),
-                              CRM_Core_DAO::getAttribute('CRM_Core_DAO_Phone',
-                                                         'phone'));
-            //Additional Phone 
-            $form->addElement('select'  , "location[2][location_type_id]", null,  array( '' => ts( '- location -' ) ) + $locType );
-            $form->addElement('select',
-                              "location[2][phone][1][phone_type_id]",
-                              null,
-                              array('' =>  ts('- type -'))+$phoneType,
-                              null
-                              );
-            $form->addElement('text',
-                              "location[2][phone][1][phone]", 
-                              ts('Additional Phone'),
-                              CRM_Core_DAO::getAttribute('CRM_Core_DAO_Phone',
-                                                         'phone'));
-            
-            
-            //Primary Email
-            $form->addElement('text', 
-                              "location[1][email][1][email]",
-                              ts('Primary Email'),
-                              CRM_Core_DAO::getAttribute('CRM_Core_DAO_Email',
-                                                         'email'));
         }
         
-        $form->add( 'date', 'start_date', ts('Case Start Date'),
-                    CRM_Core_SelectValues::date('activityDate' ),
-                    true);   
-        $form->addRule('start_date', ts('Select a valid date.'), 'qfDate');
-
+        $form->addDate( 'start_date', ts('Case Start Date'), true, array( 'formatType' => 'activityDate') );
+        
         $form->add('select', 'medium_id',  ts( 'Medium' ), 
                    CRM_Core_OptionGroup::values('encounter_medium'), true);
 
@@ -189,13 +144,17 @@ class CRM_Case_Form_Activity_OpenCase
         $form->add('textarea', 'activity_details', ts('Details'), 
                    CRM_Core_DAO::getAttribute( 'CRM_Activity_DAO_Activity', 'details' ) );
         
-        $form->addElement('submit', 
-                          $form->_createNewButtonName,
-                          ts( 'Create New Client' ) );
-        
-        $form->addElement('submit', 
-                          $form->_assignExistingButtonName,
-                          ts( 'Assign Existing Client' ) );
+        $form->addButtons(array( 
+                                array ( 'type'      => 'upload', 
+                                        'name'      => ts('Save'), 
+                                        'isDefault' => true   ), 
+                                array ( 'type'      => 'upload',
+                                        'name'      => ts('Save and New'), 
+                                        'subName'   => 'new' ), 
+                                array ( 'type'      => 'cancel', 
+                                        'name'      => ts('Cancel') ), 
+                                ) 
+                          );
     }
 
     /**
@@ -209,42 +168,18 @@ class CRM_Case_Form_Activity_OpenCase
         if ( $form->_context == 'caseActivity' ) {
             return;
         }
-        // create contact if cid not present
 
-        $contactParams = $params;
-        if ( !$form->_currentlyViewedContactId ) {
-            $contactParams['location'][1]['is_primary'] = 1;
-            $contactParams['contact_type']              = 'Individual';
-            $contactParams['email'] = $contactParams['location'][1]['email'][1]['email'];
-                
-            if ( $form->controller->getButtonName( ) == $form->_assignExistingButtonName ) {
-                //Dedupe couldn't recognize "email-Primary".So modify params temporary.
-                require_once 'CRM/Dedupe/Finder.php';
-                $dedupeParams = CRM_Dedupe_Finder::formatParams( $contactParams, 'Individual' );
-                $ids          = CRM_Dedupe_Finder::dupesByParams( $dedupeParams, 'Individual', 'Fuzzy' );
-                
-                // if we find more than one contact, use the first one
-                if ( is_array($ids) ) {
-                    $form->_currentlyViewedContactId = $contactParams['contact_id'] = $ids[0];
-
-                }
-                if ( !$form->_currentlyViewedContactId ) {
-                    CRM_Core_Error::fatal('Could not find existing client to link the case with.');
-                }
-            }
-            
-            require_once 'CRM/Contact/BAO/Contact.php';
-            $contact =& CRM_Contact_BAO_Contact::create( $contactParams, true, false );
-            $form->_currentlyViewedContactId = $contact->id;
-            
-            // unset contact params
-            unset($params['location'], $params['first_name'], $params['last_name'], 
-                  $params['prefix_id'], $params['suffix_id']);
+        // set the contact, when contact is selected
+        if ( CRM_Utils_Array::value( 'contact_select_id', $params ) ) {
+            $params['contact_id'] = CRM_Utils_Array::value( 'contact_select_id', $params );
+            $form->_currentlyViewedContactId = $params['contact_id'];
+        } elseif( $form->_allowMultiClient && $form->_context != 'case' ) {
+            $clients = explode( ',', $params['contact'] );
+            $form->_currentlyViewedContactId = $clients[0];
         }
 
         // for open case start date should be set to current date
-        $params['start_date'] = CRM_Utils_Date::format( $params['start_date'] );
-
+        $params['start_date'] = CRM_Utils_Date::processDate( $params['start_date'], date('Hi') );
         require_once 'CRM/Case/PseudoConstant.php';
         $caseStatus = CRM_Case_PseudoConstant::caseStatus( );
         // for resolved case the end date should set to now    
@@ -265,49 +200,22 @@ class CRM_Case_Form_Activity_OpenCase
      * @static
      * @access public
      */
-    static function formRule( &$values, $files, &$form ) 
+    static function formRule( $values, $files, $form ) 
     {
         if ( $form->_context == 'caseActivity' ) {
             return true;
         }
-        
-        if ( CRM_Utils_Array::value( '_qf_Case_next_assignExisting', $values ) ) {
-            return true;
-        }
 
         $errors = array( );
-              
-        // if this is a forced save, ignore find duplicate rule
-        if ( ! CRM_Utils_Array::value( '_qf_Case_next_createNew', $values ) && !$form->_currentlyViewedContactId ) {
-            $contactParams = $values;
-            $contactParams['location'][1]['is_primary'] = 1;
-            $contactParams['contact_type']              = 'Individual';
-            $contactParams['email'] = $contactParams['location'][1]['email'][1]['email'];
-
-            require_once 'CRM/Dedupe/Finder.php';
-            $dedupeParams = CRM_Dedupe_Finder::formatParams($contactParams, 'Individual');
-            $ids          = CRM_Dedupe_Finder::dupesByParams($dedupeParams, 'Individual', 'Fuzzy');
-
-            if ( $ids ) {
-                $urls = array( );
-                foreach ($ids as $id) {
-                    $displayName = CRM_Core_DAO::getFieldValue( 'CRM_Contact_DAO_Contact', $id, 'display_name' );
-                    $urls[] = '<a href="' . CRM_Utils_System::url( 'civicrm/contact/view', 'reset=1&cid=' . $id ) .
-                        '">' . $displayName . '</a>';
-                }
-                $url = implode( ', ',  $urls );
-                $errors['_qf_default'] = ts( "One matching client was found. You may choose to link the case with existing client '%1' by clicking 'Assign Existing Client', or click Create New Client button below.", 
-                                             array( 1 => $url, 'count' => count( $urls ), 'plural' => '%count matching contacts were found. You can view them here: %1, or click Create New Client button below.' ) );
-                
-                // let smarty know that there are duplicates
-                $form->assign( 'isDuplicate', 1 );
-
-                if ( count($ids) == 1 ) {
-                    $form->assign( 'onlyOneDupe', 1 );
-                }
-            } 
+        //check if contact is selected in standalone mode for single client option
+        if ( isset( $values[contact_select_id] ) && !$values[contact_select_id]  && !$form->_allowMultiClient ) {
+            $errors['contact'] = ts('Please select a valid contact or create new contact');
         }
-
+        //check selected contact for multi client option
+        if ( $form->_allowMultiClient && isset( $values[contact] ) && !$values[contact] ) {
+            $errors['contact'] = ts('Please select a valid contact or create new contact');
+        }
+        
         return $errors;
     }
 
@@ -322,9 +230,17 @@ class CRM_Case_Form_Activity_OpenCase
         if ( $form->_context == 'caseActivity' ) {
             return;
         }
+
+
+        require_once 'CRM/Case/XMLProcessor/Process.php';
+        $xmlProcessorProcess = new CRM_Case_XMLProcessor_Process( );
+        $isMultiClient = $xmlProcessorProcess->getAllowMultipleCaseClients( );
+
+        if ( !$isMultiClient && !$form->_currentlyViewedContactId ) {
+            CRM_Core_Error::fatal('Required parameter missing for OpenCase - end post processing');
+        }
        
-        if (!$form->_currentlyViewedContactId   ||
-            !$form->_currentUserId        ||
+        if (!$form->_currentUserId        ||
             !$params['case_id'] ||
             !$params['case_type']
             ) {
@@ -332,21 +248,34 @@ class CRM_Case_Form_Activity_OpenCase
         }
 
         // 1. create case-contact
-        $contactParams = array('case_id'    => $params['case_id'],
-                               'contact_id' => $form->_currentlyViewedContactId
-                               );
-        CRM_Case_BAO_Case::addCaseToContact( $contactParams );
-        //handle time stamp for Opencase
-        $time =  date("His");
-        $params['start_date'] =  $params['start_date'].$time;
+        if( $isMultiClient && $this->_context != 'case' ) {
+            $client = explode( ',', $params['contact'] );
+            foreach ($client as $key => $cliId ) {
+                if ( empty($cliId) ) {
+                    CRM_Core_Error::fatal( 'contact_id cannot be empty' );
+                }
+                $contactParams = array('case_id'    => $params['case_id'],
+                                       'contact_id' => $cliId
+                                       );
+                CRM_Case_BAO_Case::addCaseToContact( $contactParams );
+            }
+        } else {
+            $contactParams = array('case_id'    => $params['case_id'],
+                                   'contact_id' => $form->_currentlyViewedContactId
+                                   );
+            CRM_Case_BAO_Case::addCaseToContact( $contactParams );
+            $client = $form->_currentlyViewedContactId;
+        }
+
+
     
         // 2. initiate xml processor
         $xmlProcessor = new CRM_Case_XMLProcessor_Process( );
-        $xmlProcessorParams = array( 'clientID'           => $form->_currentlyViewedContactId,
+
+        $xmlProcessorParams = array( 'clientID'           => $client,
                                      'creatorID'          => $form->_currentUserId,
                                      'standardTimeline'   => 1,
                                      'activityTypeName'   => 'Open Case',
-                                     'dueDateTime'        => date ('YmdHis'),
                                      'caseID'             => $params['case_id'],
                                      'subject'            => $params['activity_subject'],
                                      'location'           => $params['location'],
@@ -364,5 +293,17 @@ class CRM_Case_Form_Activity_OpenCase
 
         // status msg
         $params['statusMsg'] = ts('Case opened successfully.');
+        
+        $buttonName = $this->controller->getButtonName( );
+        $session = CRM_Core_Session::singleton( ); 
+        if ( $buttonName == $this->getButtonName( 'upload', 'new' ) ) {
+            if ( $this->_context == 'standalone' ) {
+                $session->replaceUserContext(CRM_Utils_System::url('civicrm/case/add', 
+                                                                   'reset=1&action=add&context=standalone') );
+            } else {
+                $session->replaceUserContext(CRM_Utils_System::url('civicrm/contact/view/case', 
+                                                                   "reset=1&action=add&context=case&cid={$form->_contactID}") );
+            }            
+        }
     }
 }

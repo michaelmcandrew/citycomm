@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -41,6 +42,7 @@ class CRM_Report_Form_Member_Lapse extends CRM_Report_Form {
     protected $_summary      = null;
     protected $_addressField = false;
     protected $_emailField   = false;
+    protected $_phoneField   = false;
     protected $_charts       = array( '' => 'Tabular' );
     
     function __construct( ) {
@@ -121,6 +123,13 @@ class CRM_Report_Form_Member_Lapse extends CRM_Report_Form {
                           'grouping'=> 'contact-fields',
                           ),
                    
+                   'civicrm_phone'    =>
+                   array( 'dao'       => 'CRM_Core_DAO_Phone',
+                          'alias'	  => 'phone',
+                          'fields'    =>
+                          array( 'phone' => null ),
+                          'grouping'     => 'contact-fields',
+                          ),
                    'civicrm_email' => 
                    array( 'dao'    => 'CRM_Core_DAO_Email',
                           'fields' =>
@@ -136,10 +145,11 @@ class CRM_Report_Form_Member_Lapse extends CRM_Report_Form {
                                         'title'        => ts( 'Group' ),
                                         'operatorType' => CRM_Report_Form::OP_MULTISELECT,
                                         'group'        => true,
-                                        'options'      => CRM_Core_PseudoConstant::staticGroup( ) ), ), ),
-                   
+                                        'options'      => CRM_Core_PseudoConstant::group( ) ), ), ),
                    
                    );
+
+        $this->_tagFilter = true;
         parent::__construct( );
     }
     
@@ -155,12 +165,13 @@ class CRM_Report_Form_Member_Lapse extends CRM_Report_Form {
                 foreach ( $table['fields'] as $fieldName => $field ) {
                     if ( CRM_Utils_Array::value( 'required', $field ) ||
                          CRM_Utils_Array::value( $fieldName, $this->_params['fields'] ) ) {
-                        // to include optional columns address and email, only if checked
+                        // to include optional columns address ,email and phone only if checked
                         if ( $tableName == 'civicrm_address' ) {
                             $this->_addressField = true;
-                            $this->_emailField = true; 
                         } else if ( $tableName == 'civicrm_email' ) { 
                             $this->_emailField = true;  
+                        } else if ( $tableName == 'civicrm_phone' ) {
+                            $this->_phoneField = true;
                         }
                         $select[] = "{$field['dbAlias']} as {$tableName}_{$fieldName}";
                         $this->_columnHeaders["{$tableName}_{$fieldName}"]['type']  = CRM_Utils_Array::value( 'type', $field );
@@ -172,7 +183,7 @@ class CRM_Report_Form_Member_Lapse extends CRM_Report_Form {
         $this->_select = "SELECT " . implode( ', ', $select ) . " ";
     }
     
-    static function formRule( &$fields, &$files, $self ) {  
+    static function formRule( $fields, $files, $self ) {  
         $errors = $grouping = array( );
         //check for searching combination of dispaly columns and
         //grouping criteria
@@ -184,10 +195,10 @@ class CRM_Report_Form_Member_Lapse extends CRM_Report_Form {
         $this->_from = null;
         
         $this->_from = "
-        FROM  civicrm_contact {$this->_aliases['civicrm_contact']}
+        FROM  civicrm_contact {$this->_aliases['civicrm_contact']} {$this->_aclFrom}
               INNER JOIN civicrm_membership {$this->_aliases['civicrm_membership']} 
                          ON {$this->_aliases['civicrm_contact']}.id = 
-                            {$this->_aliases['civicrm_membership']}.contact_id
+                            {$this->_aliases['civicrm_membership']}.contact_id AND {$this->_aliases['civicrm_membership']}.is_test = 0
               LEFT  JOIN civicrm_membership_status {$this->_aliases['civicrm_membership_status']}
                          ON {$this->_aliases['civicrm_membership_status']}.id = 
                             {$this->_aliases['civicrm_membership']}.status_id
@@ -208,6 +219,14 @@ class CRM_Report_Form_Member_Lapse extends CRM_Report_Form {
             LEFT JOIN civicrm_email {$this->_aliases['civicrm_email']} 
                       ON {$this->_aliases['civicrm_contact']}.id = {$this->_aliases['civicrm_email']}.contact_id AND {$this->_aliases['civicrm_email']}.is_primary = 1\n";     
         }
+
+        // include phone field if phone column is to be included
+        if ( $this->_phoneField ) { 
+            $this->_from .= "
+            LEFT JOIN civicrm_phone {$this->_aliases['civicrm_phone']} 
+                      ON {$this->_aliases['civicrm_contact']}.id = {$this->_aliases['civicrm_phone']}.contact_id 
+                     AND {$this->_aliases['civicrm_phone']}.is_primary = 1\n";
+        }
     }      
     
     function where( ) {
@@ -223,7 +242,7 @@ class CRM_Report_Form_Member_Lapse extends CRM_Report_Form {
                         $to       = CRM_Utils_Array::value( "{$fieldName}_to"      , $this->_params );
                         
                         if ( $relative || $from || $to ) {
-                            $clause = $this->dateClause( $field['name'], $relative, $from, $to );
+                            $clause = $this->dateClause( $field['name'], $relative, $from, $to, $field['type'] );
                         }
                     } else {
                         $op = CRM_Utils_Array::value( "{$fieldName}_op", $this->_params );
@@ -237,11 +256,7 @@ class CRM_Report_Form_Member_Lapse extends CRM_Report_Form {
                         }
                     }
                     if ( ! empty( $clause ) ) {
-                        if ( CRM_Utils_Array::value( 'group', $field ) ) {
-                            $clauses[$fieldName] = $this->whereGroupClause( $clause );
-                        } else {
-                            $clauses[$fieldName] = $clause;
-                        }
+                        $clauses[$fieldName] = $clause;
                     }
                 }
             }
@@ -256,10 +271,17 @@ class CRM_Report_Form_Member_Lapse extends CRM_Report_Form {
                 $this->_where = "WHERE " . implode( ' AND ', $clauses );
             }
         }
+        
+        if ( $this->_aclWhere ) {
+            $this->_where .= " AND {$this->_aclWhere} ";
+        }     
     }
     
     function postProcess( ) {
         $this->beginPostProcess( );
+
+        // get the acl clauses built before we assemble the query
+        $this->buildACLClause( $this->_aliases['civicrm_contact'] );
         $sql = $this->buildQuery( true );
         
         $dao   = CRM_Core_DAO::executeQuery( $sql );
@@ -288,7 +310,7 @@ class CRM_Report_Form_Member_Lapse extends CRM_Report_Form {
         
         foreach ( $rows as $rowNum => $row ) {
             
-            if ( !empty($this->_noRepeats) ) {
+            if ( !empty($this->_noRepeats) && $this->_outputMode != 'csv' ) {
                 // not repeat contact display names if it matches with the one 
                 // in previous row
                 

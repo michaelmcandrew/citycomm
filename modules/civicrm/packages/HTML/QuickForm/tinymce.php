@@ -64,10 +64,14 @@ class HTML_QuickForm_TinyMCE extends HTML_QuickForm_textarea
      */
     function HTML_QuickForm_TinyMCE($elementName=null, $elementLabel=null, $attributes=null, $options=array())
     {
+        $attributes['class'] = 'tinymce';
         HTML_QuickForm_element::HTML_QuickForm_element($elementName, $elementLabel, $attributes);
         $this->_persistantFreeze = true;
         $this->_type = 'TinyMCE';
         
+        if ( is_array($attributes) && array_key_exists( 'rows', $attributes ) && $attributes['rows'] <= 4 ) {
+            $this->Height = 200;
+        }
         if (is_array($options)) {
             $this->Config = $options;
         }
@@ -129,47 +133,60 @@ class HTML_QuickForm_TinyMCE extends HTML_QuickForm_textarea
         // return frozen state
         if ($this->_flagFrozen) {
             return $this->getFrozenHtml();
-        // return textarea if incompatible
+            // return textarea if incompatible
         } elseif (!$this->IsCompatible()) {
             return parent::toHtml();
-        // return textarea
+            // return textarea
         } else {
-            //FIX for multiple editors in a form, initialize once (CRM-3559)
-            if ( !defined('HTML_QUICKFORM_TINYMCEEDITOR_LOADED' ) ) {                
-                // load tinyMCEeditor
-                $config = CRM_Core_Config::singleton( );
-                // tinymce is wierd, it needs to be loaded initially along with jquery
-                $html = null;
-                $html .= sprintf( '<script type="text/javascript">
-
-    tinyMCE.init({
-    mode : "textareas",
-    theme : "advanced",
-    editor_selector : "form-TinyMCE",
-    plugins : "safari,spellchecker,layer,table,advhr,advimage,advlink,emotions,iespell,inlinepopups,insertdatetime,preview,media,searchreplace,print,contextmenu,paste,directionality,fullscreen,noneditable,visualchars,nonbreaking,xhtmlxtras,template,pagebreak",
-    theme_advanced_buttons1 : "bold,italic,underline,strikethrough,|,justifyleft,justifycenter,justifyright,justifyfull,|,formatselect,fontselect,fontsizeselect",
-    theme_advanced_buttons2_add : "separator,insertdate,inserttime,preview,separator,forecolor,backcolor",
-    theme_advanced_buttons2_add_before: "cut,copy,paste,pastetext,pasteword,separator,search,replace,separator",
-    theme_advanced_buttons3_add_before : "tablecontrols,separator",
-    theme_advanced_buttons3_add : "emotions,iespell,media,advhr,separator,print,separator,ltr,rtl,separator,fullscreen",
-    theme_advanced_toolbar_location : "top",
-    theme_advanced_toolbar_align : "left",
-    theme_advanced_statusbar_location : "bottom",
-    theme_advanced_resize_horizontal : false,
-    theme_advanced_resizing : true,
-    apply_source_formatting : true,
-    spellchecker_languages : "+English=en,Danish=da,Dutch=nl,Finnish=fi,French=fr,German=de,Italian=it,Polish=pl,Portuguese=pt,Spanish=es,Swedish=sv",
-    relative_urls : false,
-    remove_script_host : false 
-    });    
-
+            // load tinyMCEeditor
+            $config = CRM_Core_Config::singleton( );
+            // tinymce is wierd, it needs to be loaded initially along with jquery
+            $html = null;
+            $html .= sprintf( '<script type="text/javascript">
+        var configArray = [{
+        
+        theme : "advanced",
+        editor_selector : "form-TinyMCE",
+        plugins : "safari,spellchecker,layer,table,advhr,advimage,advlink,emotions,iespell,inlinepopups,insertdatetime,preview,media,searchreplace,print,contextmenu,paste,directionality,fullscreen,noneditable,visualchars,nonbreaking,xhtmlxtras,template,pagebreak",
+        theme_advanced_buttons1    : "separator,bold,italic,underline,|,fontselect,fontsizeselect",
+        theme_advanced_buttons1_add: "separator,forecolor,backcolor,separator,link,unlink,separator,image,hr,emotions",
+        theme_advanced_buttons2    : "separator,numlist,bullist,|,outdent,indent,cite,separator,justifyleft,justifycenter,justifyright",
+        theme_advanced_buttons2_add: "justifyfull,separator,pastetext,pasteword,|,spellchecker,separator,removeformat,separator,code,|,fullscreen,help",
+        theme_advanced_buttons3    : "",
+        theme_advanced_toolbar_location : "top",
+        theme_advanced_toolbar_align : "left",
+        theme_advanced_statusbar_location : "bottom",
+        theme_advanced_resize_horizontal : false,
+        theme_advanced_resizing : true,
+        apply_source_formatting : true,
+        spellchecker_languages : "+English=en,Danish=da,Dutch=nl,Finnish=fi,French=fr,German=de,Italian=it,Polish=pl,Portuguese=pt,Spanish=es,Swedish=sv",
+        convert_urls : false,
+        remove_script_host : false,
+        width : "' . $this->Width .'%",
+        setup : function(ed) {
+                 ed.onInit.addToTop( function(){ 
+                    var height = cj("#" + ed.editorId).attr("height");
+                    cj("#" + ed.editorId + "_tbl").css("height", height);
+                    cj("#" + ed.editorId + "_ifr").css("height", height);
+                });
+                ed.onKeyUp.add(function(ed, l) {
+                    global_formNavigate = false;
+                });
+        }
+        }];
+ 
+        tinyMCE.settings = configArray[0];
+        //remove the control if element is already having 
+        tinyMCE.execCommand("mceRemoveControl", false,"' . $this->_attributes['id'] .'");
+        tinyMCE.execCommand("mceAddControl"   , true, "' . $this->_attributes['id'] .'");
+        
 </script>' );
-
-                define('HTML_QUICKFORM_TINYMCEEDITOR_LOADED', true);
-            }
                         
             // include textarea as well (TinyMCE transforms it)
             $html .=  parent::toHTML();
+            $html .= sprintf( '<script type="text/javascript">
+                                 cj("#' . $this->_attributes['id'] .'").attr( "height","'.$this->Height.'px");
+                              </script>' );
             return $html;
         }
     }

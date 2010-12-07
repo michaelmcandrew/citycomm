@@ -1,15 +1,15 @@
 <?php
 /*
 +--------------------------------------------------------------------+
-| CiviCRM version 2.2                                                |
+| CiviCRM version 3.2                                                |
 +--------------------------------------------------------------------+
-| Copyright CiviCRM LLC (c) 2004-2009                                |
+| Copyright CiviCRM LLC (c) 2004-2010                                |
 +--------------------------------------------------------------------+
 | This file is a part of CiviCRM.                                    |
 |                                                                    |
 | CiviCRM is free software; you can copy, modify, and distribute it  |
 | under the terms of the GNU Affero General Public License           |
-| Version 3, 19 November 2007.                                       |
+| Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
 |                                                                    |
 | CiviCRM is distributed in the hope that it will be useful, but     |
 | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
 | See the GNU Affero General Public License for more details.        |
 |                                                                    |
 | You should have received a copy of the GNU Affero General Public   |
-| License along with this program; if not, contact CiviCRM LLC       |
+| License and the CiviCRM Licensing Exception along                  |
+| with this program; if not, contact CiviCRM LLC                     |
 | at info[AT]civicrm[DOT]org. If you have questions about the        |
 | GNU Affero General Public License or the licensing of CiviCRM,     |
 | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -26,7 +27,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -85,6 +86,12 @@ class CRM_Core_DAO_Preferences extends CRM_Core_DAO
      */
     public $id;
     /**
+     * Which Domain is this menu item for
+     *
+     * @var int unsigned
+     */
+    public $domain_id;
+    /**
      * FK to Contact ID
      *
      * @var int unsigned
@@ -96,12 +103,6 @@ class CRM_Core_DAO_Preferences extends CRM_Core_DAO
      * @var boolean
      */
     public $is_domain;
-    /**
-     * Number of locations to be displayed on edit page?
-     *
-     * @var int unsigned
-     */
-    public $location_count;
     /**
      * What tabs are displayed in the contact summary
      *
@@ -145,11 +146,17 @@ class CRM_Core_DAO_Preferences extends CRM_Core_DAO
      */
     public $mailing_format;
     /**
-     * Format to display a individual name
+     * Format to display contact display name
      *
      * @var text
      */
-    public $individual_name_format;
+    public $display_name_format;
+    /**
+     * Format to display contact sort name
+     *
+     * @var text
+     */
+    public $sort_name_format;
     /**
      * object name of provider for address standarization
      *
@@ -181,12 +188,24 @@ class CRM_Core_DAO_Preferences extends CRM_Core_DAO
      */
     public $mailing_backend;
     /**
+     * Store navigation for the Contact
+     *
+     * @var text
+     */
+    public $navigation;
+    /**
+     * What Autocomplete has to return
+     *
+     * @var string
+     */
+    public $contact_autocomplete_options;
+    /**
      * class constructor
      *
      * @access public
      * @return civicrm_preferences
      */
-    function __construct() 
+    function __construct()
     {
         parent::__construct();
     }
@@ -196,10 +215,11 @@ class CRM_Core_DAO_Preferences extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &links() 
+    function &links()
     {
         if (!(self::$_links)) {
             self::$_links = array(
+                'domain_id' => 'civicrm_domain:id',
                 'contact_id' => 'civicrm_contact:id',
             );
         }
@@ -211,7 +231,7 @@ class CRM_Core_DAO_Preferences extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &fields() 
+    function &fields()
     {
         if (!(self::$_fields)) {
             self::$_fields = array(
@@ -220,18 +240,20 @@ class CRM_Core_DAO_Preferences extends CRM_Core_DAO
                     'type' => CRM_Utils_Type::T_INT,
                     'required' => true,
                 ) ,
+                'domain_id' => array(
+                    'name' => 'domain_id',
+                    'type' => CRM_Utils_Type::T_INT,
+                    'required' => true,
+                    'FKClassName' => 'CRM_Core_DAO_Domain',
+                ) ,
                 'contact_id' => array(
                     'name' => 'contact_id',
                     'type' => CRM_Utils_Type::T_INT,
+                    'FKClassName' => 'CRM_Contact_DAO_Contact',
                 ) ,
                 'is_domain' => array(
                     'name' => 'is_domain',
                     'type' => CRM_Utils_Type::T_BOOLEAN,
-                ) ,
-                'location_count' => array(
-                    'name' => 'location_count',
-                    'type' => CRM_Utils_Type::T_INT,
-                    'title' => ts('Location Count') ,
                 ) ,
                 'contact_view_options' => array(
                     'name' => 'contact_view_options',
@@ -278,10 +300,15 @@ class CRM_Core_DAO_Preferences extends CRM_Core_DAO
                     'type' => CRM_Utils_Type::T_TEXT,
                     'title' => ts('Mailing Format') ,
                 ) ,
-                'individual_name_format' => array(
-                    'name' => 'individual_name_format',
+                'display_name_format' => array(
+                    'name' => 'display_name_format',
                     'type' => CRM_Utils_Type::T_TEXT,
-                    'title' => ts('Individual Name Format') ,
+                    'title' => ts('Display Name Format') ,
+                ) ,
+                'sort_name_format' => array(
+                    'name' => 'sort_name_format',
+                    'type' => CRM_Utils_Type::T_TEXT,
+                    'title' => ts('Sort Name Format') ,
                 ) ,
                 'address_standardization_provider' => array(
                     'name' => 'address_standardization_provider',
@@ -315,6 +342,18 @@ class CRM_Core_DAO_Preferences extends CRM_Core_DAO
                     'rows' => 20,
                     'cols' => 80,
                 ) ,
+                'navigation' => array(
+                    'name' => 'navigation',
+                    'type' => CRM_Utils_Type::T_TEXT,
+                    'title' => ts('Navigation') ,
+                ) ,
+                'contact_autocomplete_options' => array(
+                    'name' => 'contact_autocomplete_options',
+                    'type' => CRM_Utils_Type::T_STRING,
+                    'title' => ts('Contact Autocomplete Options') ,
+                    'maxlength' => 255,
+                    'size' => CRM_Utils_Type::HUGE,
+                ) ,
             );
         }
         return self::$_fields;
@@ -325,7 +364,7 @@ class CRM_Core_DAO_Preferences extends CRM_Core_DAO
      * @access public
      * @return string
      */
-    function getTableName() 
+    function getTableName()
     {
         return self::$_tableName;
     }
@@ -335,7 +374,7 @@ class CRM_Core_DAO_Preferences extends CRM_Core_DAO
      * @access public
      * @return boolean
      */
-    function getLog() 
+    function getLog()
     {
         return self::$_log;
     }
@@ -345,17 +384,17 @@ class CRM_Core_DAO_Preferences extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &import($prefix = false) 
+    function &import($prefix = false)
     {
         if (!(self::$_import)) {
             self::$_import = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('import', $field)) {
                     if ($prefix) {
-                        self::$_import['preferences'] = &$fields[$name];
+                        self::$_import['preferences'] = & $fields[$name];
                     } else {
-                        self::$_import[$name] = &$fields[$name];
+                        self::$_import[$name] = & $fields[$name];
                     }
                 }
             }
@@ -368,17 +407,17 @@ class CRM_Core_DAO_Preferences extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &export($prefix = false) 
+    function &export($prefix = false)
     {
         if (!(self::$_export)) {
             self::$_export = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('export', $field)) {
                     if ($prefix) {
-                        self::$_export['preferences'] = &$fields[$name];
+                        self::$_export['preferences'] = & $fields[$name];
                     } else {
-                        self::$_export[$name] = &$fields[$name];
+                        self::$_export[$name] = & $fields[$name];
                     }
                 }
             }

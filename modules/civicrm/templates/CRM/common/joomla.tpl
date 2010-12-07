@@ -1,38 +1,45 @@
+{*
+ +--------------------------------------------------------------------+
+ | CiviCRM version 3.2                                                |
+ +--------------------------------------------------------------------+
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
+ +--------------------------------------------------------------------+
+ | This file is a part of CiviCRM.                                    |
+ |                                                                    |
+ | CiviCRM is free software; you can copy, modify, and distribute it  |
+ | under the terms of the GNU Affero General Public License           |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
+ |                                                                    |
+ | CiviCRM is distributed in the hope that it will be useful, but     |
+ | WITHOUT ANY WARRANTY; without even the implied warranty of         |
+ | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.               |
+ | See the GNU Affero General Public License for more details.        |
+ |                                                                    |
+ | You should have received a copy of the GNU Affero General Public   |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
+ | at info[AT]civicrm[DOT]org. If you have questions about the        |
+ | GNU Affero General Public License or the licensing of CiviCRM,     |
+ | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
+ +--------------------------------------------------------------------+
+*}
 {if $config->debug}
 {include file="CRM/common/debug.tpl"}
 {/if}
 
 <div id="crm-container" lang="{$config->lcMessages|truncate:2:"":true}" xml:lang="{$config->lcMessages|truncate:2:"":true}">
-<script type="text/javascript" src="{$config->resourceBase}js/Common.js"></script>
-
-{* Only include joomla.css in administrator (backend). Page layout style id's and classes conflict with typical front-end css and break the page layout. *}
-
-{if ! $config->userFrameworkFrontend}
-    <link rel="stylesheet" href="{$config->resourceBase}css/joomla.css" type="text/css" />
-{else}
-    <link rel="stylesheet" href="{$config->resourceBase}css/joomla_frontend.css" type="text/css" />
+    
+{* Only include joomla.css in administrator (backend). Page layout style ids and classes conflict with typical front-end css and break the page layout. *}
+{include file="CRM/common/action.tpl"}
+{if $buildNavigation }
+    {include file="CRM/common/Navigation.tpl" }
 {/if}
-{if $config->customCSSURL}
-<link rel="stylesheet" href="{$config->customCSSURL}" type="text/css" />
-{else}
-<link rel="stylesheet" href="{$config->resourceBase}css/civicrm.css" type="text/css" />
-{/if}
-<meta http-equiv="X-UA-Compatible" content="IE=7" />
-<link rel="stylesheet" href="{$config->resourceBase}css/skins/aqua/theme.css" type="text/css" />
-<script type="text/javascript" src="{$config->userFrameworkResourceURL}packages/dojo/dojo/dojo.js" djConfig="isDebug: false, parseOnLoad: true, usePlainJson: true"></script>
-<script type="text/javascript" src="{$config->userFrameworkResourceURL}packages/dojo/dojo/commonWidgets.js"></script>
-<style type="text/css">@import url({$config->resourceBase}packages/dojo/dijit/themes/tundra/tundra.css);</style>
-<script type="text/javascript" src="{$config->resourceBase}js/calendar.js"></script> 
-<script type="text/javascript" src="{$config->resourceBase}js/lang/calendar-lang.php?{$config->lcMessages}"></script> 
-<script type="text/javascript" src="{$config->resourceBase}js/calendar-setup.js"></script> 
 
-{include file="CRM/common/jquery.tpl"}
-{include file="CRM/common/dojo.tpl"}
-
-<table border="0" cellpadding="0" cellspacing="0" id="content">
+<table border="0" cellpadding="0" cellspacing="0" id="crm-content">
   <tr>
 {if $sidebarLeft}
     <td id="sidebar-left" valign="top">
+        <div id="civi-sidebar-logo" style="margin: 0 0 .25em .25em"><img src="{$config->resourceBase}i/logo_words_small.png" title="{ts}CiviCRM{/ts}/></div><div class="spacer"></div>
        {$sidebarLeft}
     </td>
 {/if}
@@ -48,26 +55,23 @@
     </div>
     {/if}
 
-    {if $pageTitle}
-        <h1 class="title">{$pageTitle}</h1>
-    {/if}
-
-    {if $displayRecent and $recentlyViewed}
-        {include file="CRM/common/recentlyViewed.tpl"}
-    {/if}
-   
-    
 {if $browserPrint}
 {* Javascript window.print link. Used for public pages where we can't do printer-friendly view. *}
-<div id="printer-friendly"><a href="javascript:window.print()" title="{ts}Print this page.{/ts}"><img src="{$config->resourceBase}i/print_preview.gif" alt="{ts}Print this page.{/ts}" /></a></div>
+<div id="printer-friendly"><a href="javascript:window.print()" title="{ts}Print this page.{/ts}"><div class="ui-icon ui-icon-print"></div></a></div>
 {else}
 {* Printer friendly link/icon. *}
-<div id="printer-friendly"><a href="{$printerFriendly}" title="{ts}Printer-friendly view of this page.{/ts}"><img src="{$config->resourceBase}i/print_preview.gif" alt="{ts}Printer-friendly view of this page.{/ts}" /></a></div>
+<div id="printer-friendly"><a href="{$printerFriendly}" title="{ts}Printer-friendly view of this page.{/ts}"><div class="ui-icon ui-icon-print"></div></a></div>
+{/if}
+
+{if $pageTitle}
+	<div class="crm-title">
+		<h1 class="title">{if $isDeleted}<del>{/if}{$pageTitle}{if $isDeleted}</del>{/if}</h1>
+	</div>    
 {/if}
 
 {*{include file="CRM/common/langSwitch.tpl"}*}
 
-    <div class="spacer"></div>
+    <div class="clear"></div>
 
     {if $localTasks}
         {include file="CRM/common/localNav.tpl"}
@@ -91,6 +95,13 @@
   </tr>
 </table>
 
+{literal}
+<script type="text/javascript">
+cj(function() {
+   cj().crmtooltip(); 
+});
+</script>
+{/literal}
 {* We need to set jquery $ object back to $*}
 <script type="text/javascript">jQuery.noConflict(true);</script>
 </div> {* end crm-container div *}

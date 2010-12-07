@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -27,14 +28,13 @@
 
 /**
  *
- * Definition of CRM API for Event.
- * More detailed documentation can be found 
- * {@link http://objectledge.org/confluence/display/CRM/CRM+v1.0+Public+APIs
- * here}
+ * File for the CiviCRM APIv2 event functions
  *
- * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
- * $Id$
+ * @package CiviCRM_APIv2
+ * @subpackage API_Event
+ * 
+ * @copyright CiviCRM LLC (c) 2004-2010
+ * @version $Id: Event.php 28934 2010-07-28 18:44:12Z mover $
  *
  */
 
@@ -100,7 +100,7 @@ function civicrm_event_create( &$params )
  * This api is used to retrieve all data for an existing Event.
  * Required parameters : id of event
  * 
- * @params  array $params  an associative array of title/value property values of civicrm_event
+ * @param  array $params  an associative array of title/value property values of civicrm_event
  * 
  * @return  If successful array of event data; otherwise object of CRM_Core_Error.
  * @access public
@@ -108,10 +108,13 @@ function civicrm_event_create( &$params )
 function civicrm_event_get( &$params ) 
 {
     _civicrm_initialize();
-    
-    if ( ! is_array( $params ) || empty( $params ) ) {
 
-        return civicrm_create_error('Params is not an array');
+    if ( ! is_array( $params ) ) {
+        return civicrm_create_error( 'Input parameters is not an array.' );
+    }
+    
+    if ( empty( $params ) ) {
+        return civicrm_create_error('Params cannot be empty.');
     }
     
     $event  =& civicrm_event_search( $params );
@@ -133,7 +136,7 @@ function civicrm_event_get( &$params )
  * Get Event record.
  * 
  *
- * @params  array  $params     an associative array of name/value property values of civicrm_event
+ * @param  array  $params     an associative array of name/value property values of civicrm_event
  *
  * @return  Array of all found event property values.
  * @access public
@@ -141,29 +144,41 @@ function civicrm_event_get( &$params )
 
 function civicrm_event_search( &$params ) 
 {
-    $inputParams      = array( );
-    $returnProperties = array( );
-    $otherVars = array( 'sort', 'offset', 'rowCount' );
 
-    $sort = false;
-    $offset = 0;
-    $rowCount = 25;
+    if ( ! is_array( $params ) ) {
+        return civicrm_create_error( ts( 'Input parameters is not an array.' ) );
+    }
+
+    $inputParams            = array( );
+    $returnProperties       = array( );
+    $returnCustomProperties = array( );
+    $otherVars              = array( 'sort', 'offset', 'rowCount' );
+
+    $sort     = false;
+    // don't check if empty, more meaningful error for API user instead of siletn defaults
+    $offset   = array_key_exists( 'return.offset', $params ) ? $params['return.offset'] : 0;
+    $rowCount = array_key_exists( 'return.max_results', $params ) ? $params['return.max_results'] : 25;
     
     foreach ( $params as $n => $v ) {
         if ( substr( $n, 0, 7 ) == 'return.' ) {
-            $returnProperties[]=substr( $n, 7 );
+            if ( substr( $n, 0, 14 ) == 'return.custom_') {
+                //take custom return properties separate
+                $returnCustomProperties[] = substr( $n, 7 );
+            } elseif( !in_array( substr( $n, 7 ) ,array( 'offset', 'max_results' ) ) ) {
+                $returnProperties[] = substr( $n, 7 );
+            }
         } elseif ( in_array( $n, $otherVars ) ) {
             $$n = $v;
         } else {
             $inputParams[$n] = $v;
         }
     }
-   
+
     if ( !empty($returnProperties ) ) {
         $returnProperties[]='id';
         $returnProperties[]='event_type_id';
     }
-   
+    
     require_once 'CRM/Core/BAO/CustomGroup.php';
     require_once 'CRM/Event/BAO/Event.php';
     $eventDAO = new CRM_Event_BAO_Event( );
@@ -173,6 +188,7 @@ function civicrm_event_search( &$params )
         $eventDAO->selectAdd( );
         $eventDAO->selectAdd( implode( ',' , $returnProperties ) );
     }
+    $eventDAO->whereAdd( '( is_template IS NULL ) OR ( is_template = 0 )' );
     
     $eventDAO->orderBy( $sort );
     $eventDAO->limit( (int)$offset, (int)$rowCount );
@@ -182,12 +198,20 @@ function civicrm_event_search( &$params )
         CRM_Core_DAO::storeValues( $eventDAO, $event[$eventDAO->id] );
         $groupTree =& CRM_Core_BAO_CustomGroup::getTree( 'Event', CRM_Core_DAO::$_nullObject, $eventDAO->id, false, $eventDAO->event_type_id );
         $groupTree = CRM_Core_BAO_CustomGroup::formatGroupTree( $groupTree, 1, CRM_Core_DAO::$_nullObject );
-        $defaults = array( );
+        $defaults  = array( );
         CRM_Core_BAO_CustomGroup::setDefaults( $groupTree, $defaults );
             
         if ( !empty( $defaults ) ) {
             foreach ( $defaults as $key => $val ) {
-                $event[$eventDAO->id][$key] = $val;
+                if (! empty($returnCustomProperties ) ) {
+                    $customKey  = explode('_', $key );
+                    //show only return properties
+                    if ( in_array( 'custom_'.$customKey['1'], $returnCustomProperties ) ) {
+                        $event[$eventDAO->id][$key] = $val;
+                    }
+                } else {
+                    $event[$eventDAO->id][$key] = $val;
+                }
             }
         }
     }//end of the loop

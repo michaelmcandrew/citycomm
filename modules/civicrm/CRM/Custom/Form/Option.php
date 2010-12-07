@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -41,7 +42,7 @@ require_once 'CRM/Core/Form.php';
 class CRM_Custom_Form_Option extends CRM_Core_Form 
 {
     /**
-     * the custom group id saved to the session for an update
+     * the custom group and field id saved to the session for an update
      *
      * @var int
      * @access protected
@@ -83,6 +84,7 @@ class CRM_Custom_Form_Option extends CRM_Core_Form
 
         $this->_id  = CRM_Utils_Request::retrieve('id' , 'Positive',
                                                   $this);
+
     }
 
     /**
@@ -105,7 +107,9 @@ class CRM_Custom_Form_Option extends CRM_Core_Form
             $paramsField = array('id' => $this->_fid);            
             CRM_Core_BAO_CustomField::retrieve($paramsField, $fieldDefaults);
 
-            if ( $fieldDefaults['html_type'] == 'CheckBox' || $fieldDefaults['html_type'] == 'Multi-Select' ) {
+            if ( $fieldDefaults['html_type'] == 'CheckBox' 
+                 || $fieldDefaults['html_type'] == 'Multi-Select' 
+                 || $fieldDefaults['html_type'] == 'AdvMulti-Select' ) {
                 $defaultCheckValues = explode(CRM_Core_BAO_CustomOption::VALUE_SEPERATOR,
                                               substr( $fieldDefaults['default_value'], 1, -1 ) );
                 if ( in_array($defaults['value'], $defaultCheckValues ) ) 
@@ -162,12 +166,8 @@ class CRM_Custom_Form_Option extends CRM_Core_Form
             
             $this->add('text', 'value', ts('Option Value'), CRM_Core_DAO::getAttribute('CRM_Core_DAO_OptionValue', 'value'), true);
         
-            // the above value is used directly by QF, so the value has to be have a rule
-            // please check with Lobo before u comment this
-            $this->addRule('value', ts('Please enter a valid value for this field. You may use a - z, A - Z, 1 - 9, spaces and underline ( _ ) characters. The length of the variable string should be less than 31 characters'), 'qfVariable');
-
             // weight
-            $this->add('text', 'weight', ts('Weight'), CRM_Core_DAO::getAttribute('CRM_Core_DAO_OptionValue', 'weight'), true);
+            $this->add('text', 'weight', ts('Order'), CRM_Core_DAO::getAttribute('CRM_Core_DAO_OptionValue', 'weight'), true);
             $this->addRule('weight', ts('is a numeric field') , 'numeric');
         
             // is active ?
@@ -196,9 +196,16 @@ class CRM_Custom_Form_Option extends CRM_Core_Form
             // if view mode pls freeze it with the done button.
             if ($this->_action & CRM_Core_Action::VIEW) {
                 $this->freeze();
-                $this->addElement('button', 'done', ts('Done'), array('onclick' => "location.href='civicrm/admin/custom/group/field/option?reset=1&action=browse&fid=" . $this->_fid . "'"));
+                $url = CRM_Utils_System::url('civicrm/admin/custom/group/field/option', 
+                                             'reset=1&action=browse&fid=' . $this->_fid . '&gid=' . $this->_optionGroupID,
+                                             true, null, false );
+                $this->addElement('button',
+                                  'done', 
+                                  ts('Done'), 
+                                  array('onclick' => "location.href='$url'", 'class' => 'form-submit'));
             }
         }
+        $this->assign('id', $this->_id);
     }
         
     /**
@@ -210,7 +217,7 @@ class CRM_Custom_Form_Option extends CRM_Core_Form
      * @static
      * @access public
      */
-    static function formRule( &$fields, &$files, &$form ) 
+    static function formRule( $fields, $files, $form ) 
     {
         $optionLabel   = CRM_Utils_Type::escape( $fields['label'], 'String' );
         $optionValue   = CRM_Utils_Type::escape( $fields['value'], 'String' );
@@ -315,9 +322,9 @@ SELECT data_type
 
             case 'Country':
                 if( !empty($fields["value"]) ) {
-                    $fieldCountry = addslashes( $fields['value'] );
-                    $query = "SELECT count(*) FROM civicrm_country WHERE name = '$fieldCountry' OR iso_code = '$fieldCountry'";
-                    if ( CRM_Core_DAO::singleValueQuery( $query,$temp ) <= 0 ) {
+                    $params = array( 1 => array( $fields['value'], 'String' ) );
+                    $query = "SELECT count(*) FROM civicrm_country WHERE name = %1 OR iso_code = %1";
+                    if ( CRM_Core_DAO::singleValueQuery( $query, $params ) <= 0 ) {
                         $errors['value'] = ts( 'Invalid default value for country.' );
                     }
                 }
@@ -325,10 +332,13 @@ SELECT data_type
 
             case 'StateProvince':
                 if( !empty($fields["value"]) ) {
-                    $fieldStateProvince = addslashes( $fields['value'] );
-                    $query = "SELECT count(*) FROM civicrm_state_province WHERE name = '$fieldStateProvince' OR abbreviation = '$fieldStateProvince'";
-            
-                    if ( CRM_Core_DAO::singleValueQuery( $query ,$temp) <= 0 ) {
+                    $params = array( 1 => array( $fields['value'], 'String' ) );
+                    $query = "
+SELECT count(*) 
+  FROM civicrm_state_province
+ WHERE name = %1
+    OR abbreviation = %1";
+                    if ( CRM_Core_DAO::singleValueQuery( $query , $params ) <= 0 ) {
                         $errors['value'] = ts( 'The invalid value for State/Province data type' );
                     }
                 }
@@ -355,8 +365,10 @@ SELECT data_type
 
         // set values for custom field properties and save
         require_once 'CRM/Core/DAO/OptionValue.php';
-        $customOption                =& new CRM_Core_DAO_OptionValue();
+        require_once 'CRM/Utils/String.php';
+        $customOption                = new CRM_Core_DAO_OptionValue();
         $customOption->label         = $params['label'];
+        $customOption->name          = CRM_Utils_String::titleToVar( $params['label'] );
         $customOption->weight        = $params['weight'];
         $customOption->value         = $params['value'];
         $customOption->is_active     = CRM_Utils_Array::value( 'is_active', $params, false );
@@ -369,11 +381,9 @@ SELECT data_type
             return;
         }
 
-        if ($this->_action & CRM_Core_Action::UPDATE) {
+        if ($this->_id) {
             $customOption->id = $this->_id;
             CRM_Core_BAO_CustomOption::updateCustomValues($params);
-        }
-        if ($this->_id) {
             $oldWeight = CRM_Core_DAO::getFieldValue( 'CRM_Core_DAO_OptionValue', $this->_id, 'weight', 'id' );
         }
 
@@ -383,10 +393,11 @@ SELECT data_type
         
         $customOption->option_group_id = $this->_optionGroupID;
         
-        $customField =& new CRM_Core_DAO_CustomField();
+        $customField = new CRM_Core_DAO_CustomField();
         $customField->id = $this->_fid;
         if ( $customField->find( true ) &&
              ( $customField->html_type == 'CheckBox' ||
+               $customField->html_type == 'AdvMulti-Select' ||
                $customField->html_type == 'Multi-Select' ) ) {
             $defVal = explode(CRM_Core_BAO_CustomOption::VALUE_SEPERATOR,
                               substr( $customField->default_value, 1, -1 ) );
@@ -418,11 +429,19 @@ SELECT data_type
                 $customField->save(); 
             }           
         } else {            
-            if ( $customField->data_type == 'Money' ) {  
+            switch ($customField->data_type) {
+            case 'Money':
                 require_once 'CRM/Utils/Rule.php';
                 $customOption->value = CRM_Utils_Rule::cleanMoney( $customOption->value );
+                break;
+            case 'Int':
+                $customOption->value = intval( $customOption->value );
+                break;
+            case 'Float':
+                $customOption->value = floatval( $customOption->value );
+                break;
             }
-
+            
             if ( CRM_Utils_Array::value( 'default_value', $params ) ) {
                 $customField->default_value = $customOption->value;
                 $customField->save();
@@ -437,10 +456,10 @@ SELECT data_type
              
         CRM_Core_Session::setStatus(ts('Your multiple choice option \'%1\' has been saved', array(1 => $customOption->label)));
         $buttonName = $this->controller->getButtonName( );
-        $session =& CRM_Core_Session::singleton( );
+        $session = CRM_Core_Session::singleton( );
         if ( $buttonName == $this->getButtonName( 'next', 'new' ) ) {
             CRM_Core_Session::setStatus( ts(' You can add another option.') );
-            $session->replaceUserContext(CRM_Utils_System::url('civicrm/admin/custom/group/field/option', 'reset=1&action=add&fid=' . $this->_fid . '&gid=' . $this->_gid));
+            $session->replaceUserContext(CRM_Utils_System::url('civicrm/admin/custom/group/field/option', 'reset=1&action=add&fid=' . $this->_fid . '&gid=' . $this->_optionGroupID));
         }
     }
 }

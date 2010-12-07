@@ -1,15 +1,15 @@
 <?php
 /*
 +--------------------------------------------------------------------+
-| CiviCRM version 2.2                                                |
+| CiviCRM version 3.2                                                |
 +--------------------------------------------------------------------+
-| Copyright CiviCRM LLC (c) 2004-2009                                |
+| Copyright CiviCRM LLC (c) 2004-2010                                |
 +--------------------------------------------------------------------+
 | This file is a part of CiviCRM.                                    |
 |                                                                    |
 | CiviCRM is free software; you can copy, modify, and distribute it  |
 | under the terms of the GNU Affero General Public License           |
-| Version 3, 19 November 2007.                                       |
+| Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
 |                                                                    |
 | CiviCRM is distributed in the hope that it will be useful, but     |
 | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
 | See the GNU Affero General Public License for more details.        |
 |                                                                    |
 | You should have received a copy of the GNU Affero General Public   |
-| License along with this program; if not, contact CiviCRM LLC       |
+| License and the CiviCRM Licensing Exception along                  |
+| with this program; if not, contact CiviCRM LLC                     |
 | at info[AT]civicrm[DOT]org. If you have questions about the        |
 | GNU Affero General Public License or the licensing of CiviCRM,     |
 | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -26,7 +27,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -121,7 +122,7 @@ class CRM_Dedupe_DAO_RuleGroup extends CRM_Core_DAO
      * @access public
      * @return civicrm_dedupe_rule_group
      */
-    function __construct() 
+    function __construct()
     {
         parent::__construct();
     }
@@ -131,7 +132,7 @@ class CRM_Dedupe_DAO_RuleGroup extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &fields() 
+    function &fields()
     {
         if (!(self::$_fields)) {
             self::$_fields = array(
@@ -144,6 +145,7 @@ class CRM_Dedupe_DAO_RuleGroup extends CRM_Core_DAO
                     'name' => 'contact_type',
                     'type' => CRM_Utils_Type::T_ENUM,
                     'title' => ts('Contact Type') ,
+                    'enumValues' => 'Individual, Organization, Household',
                 ) ,
                 'threshold' => array(
                     'name' => 'threshold',
@@ -155,6 +157,7 @@ class CRM_Dedupe_DAO_RuleGroup extends CRM_Core_DAO
                     'name' => 'level',
                     'type' => CRM_Utils_Type::T_ENUM,
                     'title' => ts('Level') ,
+                    'enumValues' => 'Strict, Fuzzy',
                 ) ,
                 'is_default' => array(
                     'name' => 'is_default',
@@ -177,7 +180,7 @@ class CRM_Dedupe_DAO_RuleGroup extends CRM_Core_DAO
      * @access public
      * @return string
      */
-    function getTableName() 
+    function getTableName()
     {
         return self::$_tableName;
     }
@@ -187,7 +190,7 @@ class CRM_Dedupe_DAO_RuleGroup extends CRM_Core_DAO
      * @access public
      * @return boolean
      */
-    function getLog() 
+    function getLog()
     {
         return self::$_log;
     }
@@ -197,17 +200,17 @@ class CRM_Dedupe_DAO_RuleGroup extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &import($prefix = false) 
+    function &import($prefix = false)
     {
         if (!(self::$_import)) {
             self::$_import = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('import', $field)) {
                     if ($prefix) {
-                        self::$_import['dedupe_rule_group'] = &$fields[$name];
+                        self::$_import['dedupe_rule_group'] = & $fields[$name];
                     } else {
-                        self::$_import[$name] = &$fields[$name];
+                        self::$_import[$name] = & $fields[$name];
                     }
                 }
             }
@@ -220,17 +223,17 @@ class CRM_Dedupe_DAO_RuleGroup extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &export($prefix = false) 
+    function &export($prefix = false)
     {
         if (!(self::$_export)) {
             self::$_export = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('export', $field)) {
                     if ($prefix) {
-                        self::$_export['dedupe_rule_group'] = &$fields[$name];
+                        self::$_export['dedupe_rule_group'] = & $fields[$name];
                     } else {
-                        self::$_export[$name] = &$fields[$name];
+                        self::$_export[$name] = & $fields[$name];
                     }
                 }
             }
@@ -242,7 +245,7 @@ class CRM_Dedupe_DAO_RuleGroup extends CRM_Core_DAO
      *
      * @return array (reference)  the array of enum fields
      */
-    static function &getEnums() 
+    static function &getEnums()
     {
         static $enums = array(
             'contact_type',
@@ -258,7 +261,7 @@ class CRM_Dedupe_DAO_RuleGroup extends CRM_Core_DAO
      *
      * @return string  the display value of the enum
      */
-    static function tsEnum($field, $value) 
+    static function tsEnum($field, $value)
     {
         static $translations = null;
         if (!$translations) {
@@ -282,9 +285,9 @@ class CRM_Dedupe_DAO_RuleGroup extends CRM_Core_DAO
      * @param array $values (reference)  the array up for enhancing
      * @return void
      */
-    static function addDisplayEnums(&$values) 
+    static function addDisplayEnums(&$values)
     {
-        $enumFields = &CRM_Dedupe_DAO_RuleGroup::getEnums();
+        $enumFields = & CRM_Dedupe_DAO_RuleGroup::getEnums();
         foreach($enumFields as $enum) {
             if (isset($values[$enum])) {
                 $values[$enum . '_display'] = CRM_Dedupe_DAO_RuleGroup::tsEnum($enum, $values[$enum]);

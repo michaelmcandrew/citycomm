@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -31,7 +32,7 @@
  * and similar across all objects (thus providing both reuse and standards)
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -66,10 +67,12 @@ class CRM_Core_Action {
         PROFILE       =   8192,
         COPY          =  16384,
         RENEW         =  32768,
-        DETACH        =  32768,
-        MAX_ACTION    =  65535;
-   
-  
+        DETACH        =  65536,
+        REVERT        = 131072,
+        MAX_ACTION    = 262143;
+    
+    //make sure MAX_ACTION = 2^n - 1 ( n = total number of actions )
+    
     /**
      * map the action names to the relevant constant. We perform
      * bit manipulation operations so we can perform multiple
@@ -95,7 +98,8 @@ class CRM_Core_Action {
                            'copy'          => self::COPY,
                            'profile'       => self::PROFILE,
                            'renew'         => self::RENEW,
-                           'detach'        => self::DETACH
+                           'detach'        => self::DETACH,
+                           'revert'        => self::REVERT,
                            );
 
     /**
@@ -196,26 +200,88 @@ class CRM_Core_Action {
      * @access public
      * @static
      */
-    static function formLink( &$links, $mask, $values ) {
+    static function formLink( &$links, $mask, $values, $more = false ) {
+        $config = CRM_Core_Config::singleton();
         if ( empty( $links ) ) {
             return null;
         }
-
+        
         $url = array( );
+
+        $firstLink = true;
         foreach ( $links as $m => $link ) {
             if ( ! $mask || ( $mask & $m ) ) {
-                $extra = CRM_Utils_Array::value( 'extra', $link, '' );
-                $url[] = sprintf('<a href="%s" ' . $extra . '>%s</a>',
-                                 CRM_Utils_System::url( self::replace( $link['url'], $values ),
-                                                        self::replace( $link['qs'] , $values ), true ),
-                                 $link['name'] );
+                $extra = null;
+                if ( isset( $link['extra'] ) ) {
+                    $extra = self::replace( CRM_Utils_Array::value( 'extra', $link, '' ),  $values );
+                }
+                
+                $frontend = false;
+                if ( isset( $link['fe'] ) ) $frontend = true;
+                
+                $urlPath = null;
+                if ( CRM_Utils_Array::value( 'qs', $link ) && !CRM_Utils_System::isNull( $link['qs'] ) ) {
+                    $urlPath = CRM_Utils_System::url( self::replace( $link['url'], $values ),
+                                                      self::replace( $link['qs'], $values ), true, null, true, $frontend );
+                } else {
+                    $urlPath = CRM_Utils_Array::value( 'url', $link );
+                }
+                
+                $ref = '';
+                if ( isset( $link['ref'] ) ) {
+                    $ref = "class = {$link['ref']}";
+                }
+                $linkClass = "action-item";
+                if ( $firstLink) {
+                    $linkClass .= " action-item-first";
+                    $firstLink = false;
+                }
+                if ( $urlPath ) {
+                    if( $frontend ) $extra .= "target=_blank"; 
+                    $url[] = sprintf('<a href="%s" class="%s" title="%s" %s ' . $extra . '>%s</a>',
+                                     $urlPath,
+                                     $linkClass,
+                                     CRM_Utils_Array::value( 'title', $link )
+                                     , $ref, $link['name'] );
+                } else {
+                    $linkClass .= ' '. strtolower( $link['ref'] );
+                    $url[] = sprintf('<a title="%s" class="%s" %s ' . $extra . '>%s</a>',
+                                     CRM_Utils_Array::value( 'title', $link ),
+                                     $linkClass,
+                                     $ref, $link['name'] );
+                }
             }
+            
         }
-        $result = '';
-        CRM_Utils_String::append( $result, '&nbsp;|&nbsp;', $url );
+        
+        $result     = $resultDiv = '';
+        $actionLink = $url;
+        $actionDiv  = array_splice( $url, 2 );
+        $showDiv    = false;
+        if ( count( $actionDiv ) > 1 ) {
+            $actionLink = array_slice ( $url, 0, 2 );
+            $showDiv = true;
+        }
+        require_once 'CRM/Utils/String.php';
+        CRM_Utils_String::append( $resultLink, '', $actionLink );
+        
+        if ( $showDiv ) {
+            CRM_Utils_String::append( $resultDiv, '</li><li>', $actionDiv );
+            $resultDiv  = ts('more')."<ul id='panel_xx' class='panel'><li>{$resultDiv}</li></ul>";
+        }
+        
+        if ($resultDiv) {
+            if ($more == true) {
+                $result = "<span class='btn-slide' id=xx>{$resultDiv}</span>";
+            } else {
+                $result = "<span>{$resultLink}</span><span class='btn-slide' id=xx>{$resultDiv}</span>";
+            }
+        } else {
+        	$result = "<span>{$resultLink}</span>";
+        }
         return $result;
     }
-
+    
     /**
      * given a string and an array of values, substitute the real values
      * in the placeholder in the str in the CiviCRM format
@@ -243,14 +309,25 @@ class CRM_Core_Action {
      * @static
      * @access public
      */
-    static function mask( $permission ) {
-        if ( $permission == CRM_Core_Permission::VIEW ) {
-            return self::VIEW | self::EXPORT | self::BASIC | self::ADVANCED | self::BROWSE | self::MAP | self::PROFILE;
-        } else if ( $permission == CRM_Core_Permission::EDIT ) {
-            return self::MAX_ACTION;  // make sure we make this 2^(n+1) -1 if we add more actions;
-        } else {
-            return null;
+    static function mask( $permissions ) {
+        $mask = null;
+        if ( !is_array( $permissions ) || CRM_Utils_System::isNull( $permissions ) ) {
+            return $mask;
         }
+        //changed structure since we are handling delete separately - CRM-4418
+        if ( in_array( CRM_Core_Permission::VIEW,  $permissions ) ) {
+            $mask |= self::VIEW | self::EXPORT | self::BASIC | self::ADVANCED | self::BROWSE | self::MAP | self::PROFILE;
+        } 
+        if ( in_array( CRM_Core_Permission::DELETE, $permissions ) ) {
+            $mask |= self::DELETE;
+        }
+        if ( in_array( CRM_Core_Permission::EDIT, $permissions ) ) { 
+            //make sure we make self::MAX_ACTION = 2^n - 1 
+            //if we add more actions; ( n = total number of actions )
+            $mask |= (self::MAX_ACTION & ~self::DELETE); 
+        }
+        
+        return $mask;
     }
 
 }

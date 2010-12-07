@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -30,6 +31,11 @@ require_once "PEAR.php";
 require_once "CRM/Core/Error.php";
 
 class CRM_Core_Session {
+
+    /**
+     * Cache of all the session names that we manage
+     */
+    static $_managedNames = null;
 
     /**
      * key is used to allow the application to have multiple top
@@ -78,11 +84,10 @@ class CRM_Core_Session {
      * This constructor is invoked whenever any module requests an instance of
      * the session and one is not available.
      *
-     * @param  string   Index for session variables
      * @return void
      */
-    function __construct( $key = 'CiviCRM' ) { 
-        $this->_key     = $key;
+    function __construct()
+    {
         $this->_session =& $_SESSION;
 
         $this->create();
@@ -91,15 +96,13 @@ class CRM_Core_Session {
     /**
      * singleton function used to manage this object
      *
-     * @param string the key to permit session scope's
-     *
      * @return object
      * @static
-     *
      */
-    static function &singleton($key = 'CiviCRM') {
+    static function &singleton()
+    {
         if (self::$_singleton === null ) {
-            self::$_singleton =& new CRM_Core_Session($key);
+            self::$_singleton = new CRM_Core_Session;
         }
         return self::$_singleton;
     }
@@ -250,12 +253,13 @@ class CRM_Core_Session {
         $this->createScope( $prefix );
 
         if ( empty( $prefix ) ) {
-            $session =& $this->_session[$this->_key];
+            $values =& $this->_session[$this->_key];
         } else {
-            $session =& $this->_session[$this->_key][$prefix];
+            require_once 'CRM/Core/BAO/Cache.php';
+            $values = CRM_Core_BAO_Cache::getItem( 'CiviCRM Session', "CiviCRM_{$prefix}" );
         }
 
-        foreach ($session as $name => $value) {
+        foreach ($values as $name => $value) {
             $vars[$name] = $value;
         }
     }
@@ -345,7 +349,7 @@ class CRM_Core_Session {
     function readUserContext( ) {
         $this->createScope( self::USER_CONTEXT );
 
-        $config =& CRM_Core_Config::singleton( );
+        $config = CRM_Core_Config::singleton( );
         $lastElement = count( $this->_session[$this->_key][self::USER_CONTEXT] ) - 1;
         return $lastElement >= 0 ? 
             $this->_session[$this->_key][self::USER_CONTEXT][$lastElement] :
@@ -415,6 +419,31 @@ class CRM_Core_Session {
         }
     }
 
+    static function registerAndRetrieveSessionObjects( $names ) {
+        if ( ! is_array( $names ) ) {
+            $names = array( $names );
+        }
+
+        if ( ! self::$_managedNames ) {
+            self::$_managedNames = $names;
+        } else {
+            self::$_managedNames = array_merge( self::$_managedNames, $names );
+        }
+
+        require_once 'CRM/Core/BAO/Cache.php';
+        CRM_Core_BAO_Cache::restoreSessionFromCache( $names );
+    }
+
+    static function storeSessionObjects( $reset = true ) {
+        if ( empty( self::$_managedNames ) ) {
+            return;
+        }
+
+        self::$_managedNames = array_unique( self::$_managedNames );
+        require_once 'CRM/Core/BAO/Cache.php';
+        CRM_Core_BAO_Cache::storeSessionToCache( self::$_managedNames, $reset );
+
+        self::$_managedNames = null;
+    }
+
 }
-
-

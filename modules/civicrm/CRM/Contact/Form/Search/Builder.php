@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -46,17 +47,17 @@ class CRM_Contact_Form_Search_Builder extends CRM_Contact_Form_Search
      * number of columns in where
      *
      * @var int
-     * @access protected
+     * @access public
      */
-    protected $_columnCount;
+    public $_columnCount;
 
     /**
      * number of blocks to be shown
      *
      * @var int
-     * @access protected
+     * @access public
      */
-    protected $_blockCount;
+    public $_blockCount;
     
     /**
      * Function to actually build the form
@@ -65,8 +66,9 @@ class CRM_Contact_Form_Search_Builder extends CRM_Contact_Form_Search
      * @access public
      */
     public function preProcess() {
+        $this->set('context', 'builder' );
         parent::preProcess( );
-
+        
         //get the block count
         $this->_blockCount = $this->get('blockCount');
         if ( !$this->_blockCount ) {
@@ -84,14 +86,20 @@ class CRM_Contact_Form_Search_Builder extends CRM_Contact_Form_Search
         }
         
         $this->_loadedMappingId =  $this->get('savedMapping');
+
+        if ( $this->get('showSearchForm' ) ) { 
+            $this->assign( 'showSearchForm', true );
+        } else {
+            $this->assign( 'showSearchForm', false );
+        } 
     }
     
     public function buildQuickForm( ) {
         //get the saved search mapping id
         $mappingId = null;
-            if ( $this->_ssID ) {
-                $mappingId = CRM_Core_DAO::getFieldValue( 'CRM_Contact_DAO_SavedSearch', $this->_ssID, 'mapping_id' );
-            }
+        if ( $this->_ssID ) {
+            $mappingId = CRM_Core_DAO::getFieldValue( 'CRM_Contact_DAO_SavedSearch', $this->_ssID, 'mapping_id' );
+        }
 
         CRM_Core_BAO_Mapping::buildMappingForm($this, 'Search Builder', $mappingId, $this->_columnCount, $this->_blockCount);
         
@@ -118,7 +126,7 @@ class CRM_Contact_Form_Search_Builder extends CRM_Contact_Form_Search
      * @static
      * @access public
      */
-    static function formRule( &$values ) {
+    static function formRule( $values ) {
         //CRM_Core_Error::debug('s', $values);
         if ( CRM_Utils_Array::value('addMore',$values) || CRM_Utils_Array::value('addBlock',$values) ) {
             return true;
@@ -129,7 +137,9 @@ class CRM_Contact_Form_Search_Builder extends CRM_Contact_Form_Search
         
         require_once 'CRM/Core/Component.php';
         $compomentFields =& CRM_Core_Component::getQueryFields( );
-        
+        require_once 'CRM/Activity/BAO/Activity.php';
+        $activityFields = CRM_Activity_BAO_Activity::exportableFields( );
+        $compomentFields = array_merge( $compomentFields, $activityFields );
         $fields = array_merge( $fields, $compomentFields );
 
         $fld = array ();
@@ -139,7 +149,7 @@ class CRM_Contact_Form_Search_Builder extends CRM_Contact_Form_Search
         $errorMsg = array ();
         foreach ($fld as $k => $v) {   
             if ( !$v[1] ) {
-                $errorMsg["operator[$v[3]][$v[4]]"] = ts("Please enter the operator.");  
+                $errorMsg["operator[$v[3]][$v[4]]"] = ts("Please enter the operator.");
             } else {
                 if ( in_array( $v[1], array( 'IS NULL', 'IS NOT NULL' ) ) && $v[2] ) {
                     $errorMsg["value[$v[3]][$v[4]]"] = ts('Please clear your value if you want to use %1 operator.', array( 1 => $v[1] ));  
@@ -167,14 +177,23 @@ class CRM_Contact_Form_Search_Builder extends CRM_Contact_Form_Search
                         }
                     }
                 } else if ( substr($v[0], 0, 7) === 'do_not_' or substr($v[0], 0, 3) === 'is_' ) { 
-                    $v2 = array($v[2]);
-                    if( !isset($v[2]) ) {
-                        $errorMsg["value[$v[3]][$v[4]]"] = ts("Please enter the value.");  
-                    }
+                    if ( $v[2] ) {
+                        $v2 = array($v[2]);
+                        if ( !isset($v[2]) ) {
+                            $errorMsg["value[$v[3]][$v[4]]"] = ts("Please enter the value.");  
+                        }
 
-                    $error = CRM_Utils_Type::validate($v2[0] , 'Integer', false );
-                    if ( $error != $v2[0] ) {
-                        $errorMsg["value[$v[3]][$v[4]]"] = ts("Please enter valid value.");  
+                        $error = CRM_Utils_Type::validate($v2[0] , 'Integer', false );
+                        if ( $error != $v2[0] ) {
+                            $errorMsg["value[$v[3]][$v[4]]"] = ts("Please enter valid value.");  
+                        }
+                    } else { 
+                        $errorMsg["value[$v[3]][$v[4]]"] = ts("Please enter the value."); 
+                    }
+                } else if ( ($v[0] === 'sort_name' || $v[0] === 'display_name') ) { 
+                    $v2 = trim($v[2]);
+                    if (empty($v2) ){
+                        $errorMsg["value[$v[3]][$v[4]]"] = ts("Please enter the value.");  
                     }
                 } else {
                     if ( substr($v[0], 0, 7) == 'custom_' ) {
@@ -194,12 +213,46 @@ class CRM_Contact_Form_Search_Builder extends CRM_Contact_Form_Search
                         
                         $fldType = CRM_Utils_Array::value('type',$fields[$fldName]);
                         $type  = CRM_Utils_Type::typeToString( $fldType );
+                        // Check Empty values for Integer Or Boolean Or Date type For operators other than IS NULL and IS NOT NULL. 
+                        if ( !in_array( $v[1], array( 'IS NULL', 'IS NOT NULL' ) ) ) {
+                            if ( ( ( $type == 'Int' || $type == 'Boolean' ) && !trim( $v[2] ) ) && $v[2] != '0' ) {
+                                $errorMsg["value[$v[3]][$v[4]]"] = ts("Please enter the value.");
+                            } else if ( $type == 'Date'  && !trim( $v[2] ) ) {
+                                $errorMsg["value[$v[3]][$v[4]]"] = ts("Please enter the value.");
+                            }
+                        }
                     }
                     
-                    if ( trim($v[2]) && $type ) {
-                        $error = CRM_Utils_Type::validate( $v[2], $type, false );
-                        if ( $error != $v[2]  ) {
-                            $errorMsg["value[$v[3]][$v[4]]"] = ts("Please enter valid value.");
+                    if ( $type && empty( $errorMsg ) ) {
+                        // check for valid format while using IN Operator
+                        if ( $v[1] == 'IN' ) {
+                            $inVal = trim( $v[2] );
+                            //checking for format to avoid db errors
+                            if (!preg_match( '/^[(]([A-Za-z0-9\'\,]+)[)]$/', $inVal) ) {
+                                $errorMsg["value[$v[3]][$v[4]]"] = ts("Please enter correct Data ( in valid format ).");
+                            }
+                            // Validate each value in parenthesis to avoid db errors
+                            if( empty( $errorMsg ) ) {
+                                $parenValues = array();
+                                $parenValues = explode ( ',', trim( $inVal, "(..)" ) );
+                                foreach ( $parenValues as $val ) {
+                                    if ( !$val && $val !='0' ) {
+                                        $errorMsg["value[$v[3]][$v[4]]"] = ts("Please enter the values correctly.");
+                                    }
+                                    if ( empty( $errorMsg ) ) {
+                                        $error = CRM_Utils_Type::validate( $val, $type, false );
+                                        if ( $error != $val ) {
+                                            $errorMsg["value[$v[3]][$v[4]]"] = ts("Please enter valid value.");
+                                        } 
+                                    }
+                                }
+                            }
+                        } else if ( trim($v[2]) ) {
+                            //else check value for rest of the Operators
+                            $error = CRM_Utils_Type::validate( $v[2], $type, false );
+                            if ( $error != $v[2]  ) {
+                                $errorMsg["value[$v[3]][$v[4]]"] = ts("Please enter valid value.");
+                            }
                         }
                     }
                 }
@@ -232,16 +285,16 @@ class CRM_Contact_Form_Search_Builder extends CRM_Contact_Form_Search
      * @access public
      */
     public function postProcess( ) {
-        $session =& CRM_Core_Session::singleton();
-        $session->set('isAdvanced', '2');
-        $session->set('isSearchBuilder', '1');
+        $this->set('isAdvanced', '2');
+        $this->set('isSearchBuilder', '1');
+        $this->set('showSearchForm', false);
 
         $params = $this->controller->exportValues( $this->_name );
-
         if (!empty($params)) {
             if ( CRM_Utils_Array::value('addBlock',$params) )  { 
                 $this->_blockCount = $this->_blockCount + 1;
                 $this->set( 'blockCount', $this->_blockCount );
+                $this->set('showSearchForm', true);
                 return;
             }
             
@@ -249,6 +302,7 @@ class CRM_Contact_Form_Search_Builder extends CRM_Contact_Form_Search
                 if ( CRM_Utils_Array::value($x,$params['addMore']) ) {
                     $this->_columnCount[$x] = $this->_columnCount[$x] + 1;
                     $this->set( 'columnCount', $this->_columnCount );
+                    $this->set('showSearchForm', true);
                     return;
                 }
             }
@@ -280,10 +334,6 @@ class CRM_Contact_Form_Search_Builder extends CRM_Contact_Form_Search
             } else {
                 $this->set( 'id', '' ); 
             }
-            
-            // also reset the sort by character 
-            $this->_sortByCharacter = null; 
-            $this->set( 'sortByCharacter', null ); 
         }
 
         // we dont want to store the sortByCharacter in the formValue, it is more like 

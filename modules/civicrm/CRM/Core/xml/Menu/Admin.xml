@@ -49,6 +49,15 @@
      <weight>0</weight>
   </item>  
   <item>
+     <path>civicrm/admin/menu</path>
+     <title>Navigation Menu</title>
+     <desc>Add or remove menu items, and modify the order of items on the navigation menu.</desc>
+     <page_callback>CRM_Admin_Page_Navigation</page_callback>
+     <adminGroup>Customize</adminGroup>
+     <icon>admin/small/template.png</icon>
+     <weight>25</weight>
+  </item>
+  <item>
      <path>civicrm/admin/options/custom_search</path>
      <title>Manage Custom Searches</title>
      <desc>Developers and accidental techies with a bit of PHP and SQL knowledge can create new search forms to handle specific search and reporting needs which aren't covered by the built-in Advanced Search and Search Builder features.</desc>
@@ -57,15 +66,6 @@
      <adminGroup>Customize</adminGroup>
      <icon>admin/small/template.png</icon>
      <weight>30</weight>
-  </item>
-  <item>
-     <path>civicrm/admin/synchUser</path>
-     <title>Synchronize Users to Contacts</title>
-     <desc>Automatically create a CiviCRM contact record for each CMS user record.</desc>
-     <page_callback>CRM_Admin_Page_CMSUser</page_callback>
-     <adminGroup>Manage</adminGroup>
-     <icon>admin/small/Synch_user.png</icon>
-     <weight>140</weight>
   </item>
   <item>
      <path>civicrm/admin/configtask</path>
@@ -158,20 +158,6 @@
      <page_callback>CRM_Admin_Form_Setting_Debugging</page_callback>
   </item>
   <item>
-     <path>civicrm/admin/deduperules</path>
-     <title>Find and Merge Duplicate Contacts</title>
-     <desc>Manage the rules used to identify potentially duplicate contact records. Scan for duplicates using a selected rule and merge duplicate contact data as needed.</desc>
-     <page_callback>CRM_Admin_Page_DedupeRules</page_callback>
-     <adminGroup>Configure</adminGroup>
-     <icon>admin/small/duplicate_matching.png</icon>
-     <weight>245</weight>
-  </item>
-  <item>
-     <path>civicrm/admin/dedupefind</path>
-     <title>Find and Merge Duplicate Contacts</title>
-     <page_callback>CRM_Admin_Page_DedupeFind</page_callback>
-  </item>
-  <item>
      <path>civicrm/admin/mapping</path>
      <title>Import/Export Mappings</title>
      <desc>Import and Export mappings allow you to easily run the same job multiple times. This option allows you to rename or delete existing mappings.</desc>
@@ -190,7 +176,14 @@
      <weight>260</weight>
   </item>
   <item>
-     <path>civicrm/contact/domain</path>
+     <path>civicrm/admin/messageTemplates/add</path>
+     <title>Message Templates</title>
+     <desc>Add/Edit Message Templates</desc>
+     <page_callback>CRM_Admin_Form_MessageTemplates</page_callback>
+     <weight>262</weight>
+  </item>
+  <item>
+     <path>civicrm/admin/domain</path>
      <title>Domain Information</title>
      <desc>Configure primary contact name, email, return-path and address information. This information is used by CiviMail to identify the sending organization.</desc>
      <path_arguments>action=update</path_arguments>
@@ -305,6 +298,23 @@
      <weight>370</weight>
   </item>
   <item>
+     <path>civicrm/admin/options/language</path>
+     <title>Preferred Languages</title>
+     <desc>Options for contact languages.</desc>
+     <path_arguments>group=languages</path_arguments>
+     <page_callback>CRM_Admin_Page_Options</page_callback>
+     <adminGroup>Option Lists</adminGroup>
+     <weight>375</weight>
+  </item>
+  <item>
+     <path>civicrm/admin/options/wordreplacements</path>
+     <title>Word Replacements</title>
+     <desc>Word Replacements.</desc>
+     <page_callback>CRM_Admin_Form_WordReplacements</page_callback>
+     <adminGroup>Option Lists</adminGroup>
+     <weight>378</weight>
+  </item>
+  <item>
      <path>civicrm/admin/locationType</path>
      <title>Location Types (Home, Work...)</title>
      <desc>Options for categorizing contact addresses and phone numbers (e.g. Home, Work, Billing, etc.).</desc>
@@ -324,12 +334,18 @@
   </item>
   <item>
      <path>civicrm/admin/tag</path>
-     <title>Tags (Categories)</title>
+     <title>Manage Tags (Categories)</title>
      <desc>Tags are useful for segmenting the contacts in your database into categories (e.g. Staff Member, Donor, Volunteer, etc.). Create and edit available tags here.</desc>
      <page_callback>CRM_Admin_Page_Tag</page_callback>
      <adminGroup>Option Lists</adminGroup>
      <icon>admin/small/11.png</icon>
      <weight>380</weight>
+  </item>
+  <item>
+     <path>civicrm/admin/tag/add</path>
+     <title>New Tag</title>
+     <page_callback>CRM_Admin_Page_Tag</page_callback>
+     <path_arguments>action=add</path_arguments>
   </item>
   <item>
      <path>civicrm/admin/options/grant_type</path>
@@ -340,16 +356,6 @@
      <adminGroup>Option Lists</adminGroup>
      <icon>admin/small/grant_type.png</icon>
      <weight>385</weight>
-  </item>
-  <item>
-     <path>civicrm/admin/options/case_type</path>
-     <title>Case Types</title>
-     <desc>List of types which can be assigned to Cases. (Enable the Cases tab from Global Settings - Site Preferences if you want to track cases.)</desc>
-     <path_arguments>group=case_type</path_arguments>
-     <page_callback>CRM_Admin_Page_Options</page_callback>
-     <adminGroup>Option Lists</adminGroup>
-     <icon>admin/small/case_type.gif</icon>
-     <weight>390</weight>
   </item>
   <item>
      <path>civicrm/admin/paymentProcessor</path>
@@ -385,15 +391,61 @@
      <icon>admin/small/01.png</icon>
      <weight>398</weight>
   </item>
-   <item>
-     <path>civicrm/admin/options/greeting_type</path>
-     <title>Greeting Types</title>
-     <desc>Options for assigning greeting to individual and household contacts.</desc>
-     <path_arguments>group=greeting_type</path_arguments>
+  <item>
+     <path>civicrm/admin/options/event_badge</path>
+     <title>Event Name Badge Templates</title>
+     <desc>Template to control event name badge format.</desc>
+     <path_arguments>group=event_badge</path_arguments>
+     <page_callback>CRM_Admin_Page_Options</page_callback>
+     <adminGroup>Option Lists</adminGroup>
+     <weight>399</weight>
+  </item>
+  <item>
+     <path>civicrm/admin/options/email_greeting</path>
+     <title>Email Greetings</title>
+     <desc>Options for assigning email greetings to individual and household contacts.</desc>
+     <path_arguments>group=email_greeting</path_arguments>
      <page_callback>CRM_Admin_Page_Options</page_callback>
      <adminGroup>Option Lists</adminGroup>
      <icon>admin/small/01.png</icon>
-     <weight>400</weight>
+     <weight>405</weight>
+  </item> 
+  <item>
+     <path>civicrm/admin/options/postal_greeting</path>
+     <title>Postal Greetings</title>
+     <desc>Options for assigning postal greetings to individual and household contacts.</desc>
+     <path_arguments>group=postal_greeting</path_arguments>
+     <page_callback>CRM_Admin_Page_Options</page_callback>
+     <adminGroup>Option Lists</adminGroup>
+     <icon>admin/small/01.png</icon>
+     <weight>410</weight>
+  </item>
+  <item>
+     <path>civicrm/admin/options/addressee</path>
+     <title>Addressee</title>
+     <desc>Options for assigning addressee to individual, household and organization contacts.</desc>
+     <path_arguments>group=addressee</path_arguments>
+     <page_callback>CRM_Admin_Page_Options</page_callback>
+     <adminGroup>Option Lists</adminGroup>
+     <icon>admin/small/01.png</icon>
+     <weight>415</weight>
+  </item>
+  <item>
+     <path>civicrm/admin/options/subtype</path>
+     <title>Contact Types</title>
+     <page_callback>CRM_Admin_Page_ContactType</page_callback>
+     <adminGroup>Option Lists</adminGroup>
+     <icon>admin/small/09.png</icon>
+     <weight>420</weight>
+  </item>
+  <item>
+     <path>civicrm/admin/options/website_type</path>
+     <title>Website Types</title>
+     <desc>Options for assigning website types to contacts.</desc>
+     <path_arguments>group=website_type</path_arguments>
+     <page_callback>CRM_Admin_Page_Options</page_callback>
+     <adminGroup>Option Lists</adminGroup>
+     <weight>425</weight>
   </item>
   <item>
      <path>civicrm/admin/access</path>
@@ -403,6 +455,15 @@
      <adminGroup>Manage</adminGroup>
      <icon>admin/small/03.png</icon>
      <weight>110</weight>
+  </item>
+  <item>
+     <path>civicrm/admin/synchUser</path>
+     <title>Synchronize Users to Contacts</title>
+     <desc>Automatically create a CiviCRM contact record for each CMS user record.</desc>
+     <page_callback>CRM_Admin_Page_CMSUser</page_callback>
+     <adminGroup>Manage</adminGroup>
+     <icon>admin/small/Synch_user.png</icon>
+     <weight>140</weight>
   </item>
   <item>
      <path>civicrm/admin</path>
@@ -427,5 +488,72 @@
      <path>civicrm/admin/optionValue</path>
      <title>Option Values</title>
      <page_callback>CRM_Admin_Page_OptionValue</page_callback>
+  </item>
+  <item>
+     <path>civicrm/ajax/menu</path>
+     <page_callback>CRM_Admin_Page_AJAX::getNavigationList</page_callback>
+     <access_arguments>access CiviCRM,administer CiviCRM</access_arguments>
+     <page_type>3</page_type>
+  </item>
+  <item>
+     <path>civicrm/ajax/menutree</path>
+     <page_callback>CRM_Admin_Page_AJAX::menuTree</page_callback>
+     <access_arguments>access CiviCRM,administer CiviCRM</access_arguments>
+     <page_type>3</page_type>
+  </item>
+  <item>
+     <path>civicrm/ajax/statusmsg</path>
+     <page_callback>CRM_Admin_Page_AJAX::getStatusMsg</page_callback>
+     <access_arguments>access CiviCRM</access_arguments>
+  </item>
+  <item>
+     <path>civicrm/admin/price</path>
+     <title>Price Sets</title>
+     <page_callback>CRM_Price_Page_Set</page_callback>
+     <desc>Price sets allow you to offer multiple options with associated fees (e.g. pre-conference workshops, additional meals, etc.). Configure Price Sets for events which need more than a single set of fee levels.</desc>
+     <access_arguments>administer CiviCRM,access CiviEvent</access_arguments>
+     <adminGroup>Customize</adminGroup>
+     <icon>admin/small/price_sets.png</icon>
+     <weight>380</weight>
+  </item>
+  <item>
+     <path>civicrm/admin/price/add</path>
+     <title>New Price Set</title>
+     <page_callback>CRM_Price_Page_Set</page_callback>
+     <desc>Price sets allow you to offer multiple options with associated fees (e.g. pre-conference workshops, additional meals, etc.). Configure Price Sets for events which need more than a single set of fee levels.</desc>
+     <access_arguments>administer CiviCRM</access_arguments>
+     <path_arguments>action=add</path_arguments>
+  </item>
+  <item>
+     <path>civicrm/admin/price/field</path>
+     <title>Price Fields</title>
+     <page_callback>CRM_Price_Page_Field</page_callback>
+     <skipBreadcrumb>true</skipBreadcrumb>
+  </item>
+  <item>
+     <path>civicrm/admin/price/field/option</path>
+     <title>Price Field Options</title>
+     <page_callback>CRM_Price_Page_Option</page_callback>
+  </item>
+  <item>
+       <path>civicrm/ajax/taglist</path>
+       <page_callback>CRM_Admin_Page_AJAX::getTagList</page_callback>
+       <access_arguments>access CiviCRM</access_arguments>
+  </item>
+  <item>
+       <path>civicrm/ajax/processTags</path>
+       <page_callback>CRM_Admin_Page_AJAX::processTags</page_callback>
+       <access_arguments>access CiviCRM</access_arguments>
+       <page_type>3</page_type>
+  </item>
+  <item>
+     <path>civicrm/admin/tplstrings/add</path>
+     <page_callback>CRM_Admin_Form_Persistent</page_callback>
+     <access_arguments>administer CiviCRM,access CiviCRM</access_arguments>
+  </item>
+  <item>
+     <path>civicrm/admin/tplstrings</path>
+     <page_callback>CRM_Admin_Page_Persistent</page_callback>
+     <access_arguments>administer CiviCRM,access CiviCRM</access_arguments>
   </item>
 </menu>

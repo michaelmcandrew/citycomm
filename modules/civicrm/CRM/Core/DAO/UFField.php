@@ -1,15 +1,15 @@
 <?php
 /*
 +--------------------------------------------------------------------+
-| CiviCRM version 2.2                                                |
+| CiviCRM version 3.2                                                |
 +--------------------------------------------------------------------+
-| Copyright CiviCRM LLC (c) 2004-2009                                |
+| Copyright CiviCRM LLC (c) 2004-2010                                |
 +--------------------------------------------------------------------+
 | This file is a part of CiviCRM.                                    |
 |                                                                    |
 | CiviCRM is free software; you can copy, modify, and distribute it  |
 | under the terms of the GNU Affero General Public License           |
-| Version 3, 19 November 2007.                                       |
+| Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
 |                                                                    |
 | CiviCRM is distributed in the hope that it will be useful, but     |
 | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
 | See the GNU Affero General Public License for more details.        |
 |                                                                    |
 | You should have received a copy of the GNU Affero General Public   |
-| License along with this program; if not, contact CiviCRM LLC       |
+| License and the CiviCRM Licensing Exception along                  |
+| with this program; if not, contact CiviCRM LLC                     |
 | at info[AT]civicrm[DOT]org. If you have questions about the        |
 | GNU Affero General Public License or the licensing of CiviCRM,     |
 | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -26,7 +27,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -128,9 +129,15 @@ class CRM_Core_DAO_UFField extends CRM_Core_DAO
      */
     public $help_post;
     /**
+     * Description and/or help text to display before this field.
+     *
+     * @var text
+     */
+    public $help_pre;
+    /**
      * In what context(s) is this field visible.
      *
-     * @var enum('User and User Admin Only', 'Public User Pages', 'Public User Pages and Listings')
+     * @var enum('User and User Admin Only', 'Public Pages', 'Public Pages and Listings')
      */
     public $visibility;
     /**
@@ -170,12 +177,18 @@ class CRM_Core_DAO_UFField extends CRM_Core_DAO
      */
     public $field_type;
     /**
+     * Is this field reserved for use by some other CiviCRM functionality?
+     *
+     * @var boolean
+     */
+    public $is_reserved;
+    /**
      * class constructor
      *
      * @access public
      * @return civicrm_uf_field
      */
-    function __construct() 
+    function __construct()
     {
         parent::__construct();
     }
@@ -185,7 +198,7 @@ class CRM_Core_DAO_UFField extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &links() 
+    function &links()
     {
         if (!(self::$_links)) {
             self::$_links = array(
@@ -201,7 +214,7 @@ class CRM_Core_DAO_UFField extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &fields() 
+    function &fields()
     {
         if (!(self::$_fields)) {
             self::$_fields = array(
@@ -214,6 +227,7 @@ class CRM_Core_DAO_UFField extends CRM_Core_DAO
                     'name' => 'uf_group_id',
                     'type' => CRM_Utils_Type::T_INT,
                     'required' => true,
+                    'FKClassName' => 'CRM_Core_DAO_UFGroup',
                 ) ,
                 'field_name' => array(
                     'name' => 'field_name',
@@ -225,6 +239,7 @@ class CRM_Core_DAO_UFField extends CRM_Core_DAO
                 'is_active' => array(
                     'name' => 'is_active',
                     'type' => CRM_Utils_Type::T_BOOLEAN,
+                    'default' => '',
                 ) ,
                 'is_view' => array(
                     'name' => 'is_view',
@@ -239,16 +254,24 @@ class CRM_Core_DAO_UFField extends CRM_Core_DAO
                     'type' => CRM_Utils_Type::T_INT,
                     'title' => ts('Weight') ,
                     'required' => true,
+                    'default' => '',
                 ) ,
                 'help_post' => array(
                     'name' => 'help_post',
                     'type' => CRM_Utils_Type::T_TEXT,
                     'title' => ts('Help Post') ,
                 ) ,
+                'help_pre' => array(
+                    'name' => 'help_pre',
+                    'type' => CRM_Utils_Type::T_TEXT,
+                    'title' => ts('Help Pre') ,
+                ) ,
                 'visibility' => array(
                     'name' => 'visibility',
                     'type' => CRM_Utils_Type::T_ENUM,
                     'title' => ts('Visibility') ,
+                    'default' => 'User and User Admin Only',
+                    'enumValues' => 'User and User Admin Only,Public Pages,Public Pages and Listings',
                 ) ,
                 'in_selector' => array(
                     'name' => 'in_selector',
@@ -262,6 +285,7 @@ class CRM_Core_DAO_UFField extends CRM_Core_DAO
                 'location_type_id' => array(
                     'name' => 'location_type_id',
                     'type' => CRM_Utils_Type::T_INT,
+                    'FKClassName' => 'CRM_Core_DAO_LocationType',
                 ) ,
                 'phone_type_id' => array(
                     'name' => 'phone_type_id',
@@ -281,6 +305,10 @@ class CRM_Core_DAO_UFField extends CRM_Core_DAO
                     'maxlength' => 255,
                     'size' => CRM_Utils_Type::HUGE,
                 ) ,
+                'is_reserved' => array(
+                    'name' => 'is_reserved',
+                    'type' => CRM_Utils_Type::T_BOOLEAN,
+                ) ,
             );
         }
         return self::$_fields;
@@ -291,7 +319,7 @@ class CRM_Core_DAO_UFField extends CRM_Core_DAO
      * @access public
      * @return string
      */
-    function getTableName() 
+    function getTableName()
     {
         global $dbLocale;
         return self::$_tableName . $dbLocale;
@@ -302,7 +330,7 @@ class CRM_Core_DAO_UFField extends CRM_Core_DAO
      * @access public
      * @return boolean
      */
-    function getLog() 
+    function getLog()
     {
         return self::$_log;
     }
@@ -312,17 +340,17 @@ class CRM_Core_DAO_UFField extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &import($prefix = false) 
+    function &import($prefix = false)
     {
         if (!(self::$_import)) {
             self::$_import = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('import', $field)) {
                     if ($prefix) {
-                        self::$_import['uf_field'] = &$fields[$name];
+                        self::$_import['uf_field'] = & $fields[$name];
                     } else {
-                        self::$_import[$name] = &$fields[$name];
+                        self::$_import[$name] = & $fields[$name];
                     }
                 }
             }
@@ -335,17 +363,17 @@ class CRM_Core_DAO_UFField extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &export($prefix = false) 
+    function &export($prefix = false)
     {
         if (!(self::$_export)) {
             self::$_export = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('export', $field)) {
                     if ($prefix) {
-                        self::$_export['uf_field'] = &$fields[$name];
+                        self::$_export['uf_field'] = & $fields[$name];
                     } else {
-                        self::$_export[$name] = &$fields[$name];
+                        self::$_export[$name] = & $fields[$name];
                     }
                 }
             }
@@ -357,7 +385,7 @@ class CRM_Core_DAO_UFField extends CRM_Core_DAO
      *
      * @return array (reference)  the array of enum fields
      */
-    static function &getEnums() 
+    static function &getEnums()
     {
         static $enums = array(
             'visibility',
@@ -372,15 +400,15 @@ class CRM_Core_DAO_UFField extends CRM_Core_DAO
      *
      * @return string  the display value of the enum
      */
-    static function tsEnum($field, $value) 
+    static function tsEnum($field, $value)
     {
         static $translations = null;
         if (!$translations) {
             $translations = array(
                 'visibility' => array(
                     'User and User Admin Only' => ts('User and User Admin Only') ,
-                    'Public User Pages' => ts('Public User Pages') ,
-                    'Public User Pages and Listings' => ts('Public User Pages and Listings') ,
+                    'Public Pages' => ts('Public Pages') ,
+                    'Public Pages and Listings' => ts('Public Pages and Listings') ,
                 ) ,
             );
         }
@@ -392,9 +420,9 @@ class CRM_Core_DAO_UFField extends CRM_Core_DAO
      * @param array $values (reference)  the array up for enhancing
      * @return void
      */
-    static function addDisplayEnums(&$values) 
+    static function addDisplayEnums(&$values)
     {
-        $enumFields = &CRM_Core_DAO_UFField::getEnums();
+        $enumFields = & CRM_Core_DAO_UFField::getEnums();
         foreach($enumFields as $enum) {
             if (isset($values[$enum])) {
                 $values[$enum . '_display'] = CRM_Core_DAO_UFField::tsEnum($enum, $values[$enum]);

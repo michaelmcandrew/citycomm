@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -50,13 +51,16 @@ class CRM_Case_XMLProcessor_Process extends CRM_Case_XMLProcessor {
             return false;
         }
 
+        require_once 'CRM/Case/XMLProcessor/Process.php';
+        $xmlProcessorProcess = new CRM_Case_XMLProcessor_Process( );
+        $this->_isMultiClient = $xmlProcessorProcess->getAllowMultipleCaseClients( );
+
         $this->process( $xml, $params );
     }
 
     function get( $caseType,
-                  $fieldSet, $isLabel = false ) {
+                  $fieldSet, $isLabel = false, $maskAction = false ) {
         $xml = $this->retrieve( $caseType );
-
         if ( $xml === false ) {
             require_once 'CRM/Utils/System.php';
             $docLink = CRM_Utils_System::docURL2( "CiviCase Configuration" );
@@ -71,12 +75,13 @@ class CRM_Case_XMLProcessor_Process extends CRM_Case_XMLProcessor {
         case 'ActivitySets':
             return $this->activitySets( $xml->ActivitySets );
         case 'ActivityTypes':
-            return $this->activityTypes( $xml->ActivityTypes, false, $isLabel );
+            return $this->activityTypes( $xml->ActivityTypes, false, $isLabel, $maskAction );
         }
     }
 
     function process( $xml,
                       &$params ) {
+                      
         $standardTimeline = CRM_Utils_Array::value( 'standardTimeline', $params );
         $activitySetName  = CRM_Utils_Array::value( 'activitySetName' , $params );
         $activityTypeName = CRM_Utils_Array::value( 'activityTypeName', $params );
@@ -145,7 +150,7 @@ class CRM_Case_XMLProcessor_Process extends CRM_Case_XMLProcessor {
         }
     }
 
-    function &caseRoles( $caseRolesXML ) {
+    function &caseRoles( $caseRolesXML, $isCaseManager = false ) {
         $relationshipTypes =& $this->allRelationshipTypes( );
 
         $result = array( );
@@ -157,7 +162,12 @@ class CRM_Case_XMLProcessor_Process extends CRM_Case_XMLProcessor {
                 if ( $relationshipTypeID === false ) {
                     continue;
                 }
-                $result[$relationshipTypeID] = $relationshipTypeName;
+                
+                if ( !$isCaseManager ) {    
+                    $result[$relationshipTypeID] = $relationshipTypeName;
+                } else if ( $relationshipTypeXML->manager ) {
+                    return $relationshipTypeID;
+                }
             }
         }
         return $result;
@@ -174,17 +184,22 @@ class CRM_Case_XMLProcessor_Process extends CRM_Case_XMLProcessor {
             CRM_Core_Error::fatal( );
             return false;
         }
-
-        $relationshipParams = array( 'relationship_type_id' => $relationshipTypeID,
-                                     'contact_id_a'         => $params['clientID'],
-                                     'contact_id_b'         => $params['creatorID'],
-                                     'is_active'            => 1,
-                                     'case_id'              => $params['caseID'],
-                                     'start_date'           => date("Ymd") );
         
-        if ( ! $this->createRelationship( $relationshipParams ) ) {
-            CRM_Core_Error::fatal( );
-            return false;
+        $client = $params['clientID'];
+        if ( !is_array( $client ) ) $client = array( $client );
+        
+        foreach( $client as $key => $clientId ) {
+            $relationshipParams = array( 'relationship_type_id' => $relationshipTypeID,
+                                         'contact_id_a'         => $clientId,
+                                         'contact_id_b'         => $params['creatorID'],
+                                         'is_active'            => 1,
+                                         'case_id'              => $params['caseID'],
+                                         'start_date'           => date("Ymd") );
+        
+            if ( ! $this->createRelationship( $relationshipParams ) ) {
+                CRM_Core_Error::fatal( );
+                return false;
+            }
         }
         return true;
     }
@@ -192,7 +207,7 @@ class CRM_Case_XMLProcessor_Process extends CRM_Case_XMLProcessor {
     function createRelationship( &$params ) {
         require_once 'CRM/Contact/DAO/Relationship.php';
 
-        $dao =& new CRM_Contact_DAO_Relationship( );
+        $dao = new CRM_Contact_DAO_Relationship( );
         $dao->copyValues( $params );
         // only create a relationship if it does not exist
         if ( ! $dao->find( true ) ) {
@@ -201,7 +216,7 @@ class CRM_Case_XMLProcessor_Process extends CRM_Case_XMLProcessor {
         return true;
     }
 
-    function activityTypes( $activityTypesXML, $maxInst = false, $isLabel = false ) {
+    function activityTypes( $activityTypesXML, $maxInst = false, $isLabel = false, $maskAction = false ) {
         $activityTypes =& $this->allActivityTypes( true, true );
         $result = array( );
         foreach ( $activityTypesXML as $activityTypeXML ) {
@@ -209,25 +224,36 @@ class CRM_Case_XMLProcessor_Process extends CRM_Case_XMLProcessor {
                 $activityTypeName = (string ) $recordXML->name;
                 $maxInstances     = (string ) $recordXML->max_instances;
                 $activityTypeInfo = CRM_Utils_Array::value( $activityTypeName, $activityTypes );
-                              
+                
                 if ( $activityTypeInfo['id'] ) {
-                    if ( !$maxInst ) {
-                        //if we want,labels of activities should be returned.
-                        if ( $isLabel ) {
-                            $result[$activityTypeInfo['id']] = $activityTypeInfo['label'];
-                        } else {
-                            $result[$activityTypeInfo['id']] = $activityTypeName;
+                    if ( $maskAction ) {
+                        if ( $maskAction == 'edit' && 
+                             '0' ===  (string ) $recordXML->editable ) {
+                            $result[$maskAction][] = $activityTypeInfo['id'];
                         }
-                    } else {
-                        if ( $maxInstances ) {
-                            $result[$activityTypeName] = $maxInstances;
+                    } else{
+                        if ( !$maxInst ) {
+                            //if we want,labels of activities should be returned.
+                            if ( $isLabel ) {
+                                $result[$activityTypeInfo['id']] = $activityTypeInfo['label'];
+                            } else {
+                                $result[$activityTypeInfo['id']] = $activityTypeName;
+                            }
+                        } else {
+                            if ( $maxInstances ) {
+                                $result[$activityTypeName] = $maxInstances;
+                            }
                         }
                     }
                 }
             }
         }
-        return $result;
 
+        // call option value hook
+        require_once 'CRM/Utils/Hook.php';
+        CRM_Utils_Hook::optionValues( $result, 'case_activity_type' );
+
+        return $result;
     }
 
     function deleteEmptyActivity( &$params ) {
@@ -237,6 +263,7 @@ FROM   civicrm_activity a
 INNER JOIN civicrm_activity_target t ON t.activity_id = a.id
 WHERE  t.target_contact_id = %1
 AND    a.is_auto = 1
+AND    a.is_current_revision = 1
 ";
         $sqlParams = array( 1 => array( $params['clientID'], 'Integer' ) );
         CRM_Core_DAO::executeQuery( $query, $sqlParams );
@@ -246,20 +273,19 @@ AND    a.is_auto = 1
         $query = "
 SELECT     count(a.id)
 FROM       civicrm_activity a
-INNER JOIN civicrm_activity_target t ON t.activity_id = a.id
 INNER JOIN civicrm_case_activity ca on ca.activity_id = a.id
-WHERE      t.target_contact_id = %1
-AND        a.activity_type_id  = %2
-AND        ca.case_id = %3
+WHERE      a.activity_type_id  = %1
+AND        ca.case_id = %2
+AND        a.is_deleted = 0
 ";
-        $sqlParams   = array( 1 => array( $params['clientID']      , 'Integer' ),
-                              2 => array( $params['activityTypeID'], 'Integer' ),
-                              3 => array( $params['caseID']        , 'Integer' ) );
+
+        $sqlParams   = array( 1 => array( $params['activityTypeID'], 'Integer' ),
+                              2 => array( $params['caseID']        , 'Integer' ) );
         $count       = CRM_Core_DAO::singleValueQuery( $query, $sqlParams );
         
         // check for max instance
-        $caseType    = CRM_Case_PseudoConstant::caseTypeName( $params['caseID'] );
-        $maxInstance = self::getMaxInstance( $caseType['name'], $params['activityTypeName'] );
+        $caseType    = CRM_Case_BAO_Case::getCaseType( $params['caseID'] );
+        $maxInstance = self::getMaxInstance( $caseType, $params['activityTypeName'] );
 
         return $maxInstance ? ($count < $maxInstance ? false : true) : false;  
     }
@@ -268,7 +294,7 @@ AND        ca.case_id = %3
                              &$params ) {
 
         $activityTypeName =  (string) $activityTypeXML->name;
-        $activityTypes    =& $this->allActivityTypes( );
+        $activityTypes    =& $this->allActivityTypes( true, true );
         $activityTypeInfo = CRM_Utils_Array::value( $activityTypeName, $activityTypes );
 
         if ( ! $activityTypeInfo ) {
@@ -286,6 +312,12 @@ AND        ca.case_id = %3
             $statusName = 'Scheduled';
         }
 
+        if( $this->_isMultiClient ) {
+            $client = $params['clientID'];
+        } else {
+            $client = array( 1 => $params['clientID'] );
+        }
+
         require_once 'CRM/Core/OptionGroup.php';
         if ( $activityTypeName == 'Open Case' ) {
             $activityParams = array( 'activity_type_id'    => $activityTypeID,
@@ -296,7 +328,7 @@ AND        ca.case_id = %3
                                      'status_id'           => CRM_Core_OptionGroup::getValue( 'activity_status',
                                                                                               $statusName,
                                                                                               'name' ),
-                                     'target_contact_id'   => $params['clientID'],
+                                     'target_contact_id'   => $client,
                                      'medium_id'           => CRM_Utils_Array::value('medium_id', $params),
                                      'location'            => CRM_Utils_Array::value('location',  $params),
                                      'details'             => CRM_Utils_Array::value('details',   $params),
@@ -310,28 +342,28 @@ AND        ca.case_id = %3
                                      'status_id'           => CRM_Core_OptionGroup::getValue( 'activity_status',
                                                                                             $statusName,
                                                                                             'name' ),
-                                     'target_contact_id'   => $params['clientID'],
+                                     'target_contact_id'   => $client
                                     );
         }
+        
+        //parsing date to default preference format
+        $params['activity_date_time'] = CRM_Utils_Date::processDate( $params['activity_date_time'] );
         
         if ( $activityTypeName == 'Open Case' ) {
             // we don't set activity_date_time for auto generated
             // activities, but we want it to be set for open case.
-            if ( array_key_exists('activity_date_time', $params) ) {
-                $activityParams['activity_date_time'] = $params['activity_date_time'];
-                $activityParams['due_date_time']      = $params['activity_date_time'];
-            }
+            $activityParams['activity_date_time'] = $params['activity_date_time'];
             if ( array_key_exists('custom', $params) && is_array($params['custom']) ) {
                 $activityParams['custom'] = $params['custom'];
             }
         } else {
-            $dueDateTime = null;
-            //get due date of reference activity if set.
+            $activityDate = null;
+            //get date of reference activity if set.
             if ( $referenceActivityName = (string) $activityTypeXML->reference_activity  ) {
 
                 //we skip open case as reference activity.CRM-4374.
-                if ( CRM_Utils_Array::value('is_StartdateChanged', $params) && $referenceActivityName == 'Open Case' ) {
-                    $dueDateTime = $params['dueDateTime']; 
+                if ( CRM_Utils_Array::value('resetTimeline', $params) && $referenceActivityName == 'Open Case' ) {
+                    $activityDate = $params['activity_date_time']; 
                 } else {
                     $referenceActivityInfo = CRM_Utils_Array::value( $referenceActivityName, $activityTypes );
                     if ( $referenceActivityInfo['id'] ) {
@@ -344,31 +376,29 @@ AND        ca.case_id = %3
                         
                         require_once 'CRM/Case/BAO/Case.php';
                         $referenceActivity = 
-                            CRM_Case_BAO_Case::getCaseActivityDueDates( $params['caseID'], $caseActivityParams, true );
+                            CRM_Case_BAO_Case::getCaseActivityDates( $params['caseID'], $caseActivityParams, true );
                         
                         if ( is_array($referenceActivity) ) {
                             foreach( $referenceActivity as $aId => $details ) {
-                                $dueDateTime = CRM_Utils_Array::value('due_date', $details );
+                                $activityDate = CRM_Utils_Array::value('activity_date', $details );
                                 break;
                             }
                         }
                     }
                 }
             }
-            if ( ! $dueDateTime ) {
-                $dueDateTime = $params['dueDateTime'];
+            if ( !$activityDate ) {
+                $activityDate = $params['activity_date_time'];
             }
-
-            $datetime        = new DateTime( $dueDateTime );
-            $activityDueTime = CRM_Utils_Date::unformat( $datetime->format('Y:m:d:H:i:s'), ':' );
-
+            list( $activity_date, $activity_time ) = CRM_Utils_Date::setDateDefaults( $activityDate );
+            $activityDateTime = CRM_Utils_Date::processDate( $activity_date, $activity_time );
             //add reference offset to date.
             if ( (int) $activityTypeXML->reference_offset ) {
-                $activityDueTime = CRM_Utils_Date::intervalAdd( 'day', (int) $activityTypeXML->reference_offset, 
-                                                                $activityDueTime );
+                $activityDateTime = CRM_Utils_Date::intervalAdd( 'day', (int) $activityTypeXML->reference_offset, 
+                                                                 $activityDateTime );
             }
             
-            $activityParams['due_date_time'] = CRM_Utils_Date::format( $activityDueTime );
+            $activityParams['activity_date_time'] = CRM_Utils_Date::format( $activityDateTime );
         }
 
         // if same activity is already there, skip and dont touch
@@ -377,9 +407,14 @@ AND        ca.case_id = %3
         if ( $this->isActivityPresent( $params ) ) {
             return true;
         }
-
+        $activityParams['case_id'] = $params['caseID'];
+        if ( CRM_Utils_Array::value('is_auto', $activityParams) ) {
+            $activityParams['skipRecentView'] = true;
+        }
+        
         require_once 'CRM/Activity/BAO/Activity.php';
         $activity = CRM_Activity_BAO_Activity::create( $activityParams );
+        
         if ( ! $activity ) {
             CRM_Core_Error::fatal( );
             return false;
@@ -402,6 +437,7 @@ AND        ca.case_id = %3
                 $result[$activitySetName] = $activitySetLabel;
             }
         }
+        
         return $result;
     }
     
@@ -416,4 +452,24 @@ AND        ca.case_id = %3
         $activityInstances = $this->activityTypes( $xml->ActivityTypes, true );
         return $activityTypeName ? $activityInstances[$activityTypeName] : $activityInstances;
     }
+
+    function getCaseManagerRoleId( $caseType ) {
+        $xml = $this->retrieve( $caseType );
+        return $this->caseRoles( $xml->CaseRoles, true );
+    }
+
+    function getRedactActivityEmail(  ) {
+        $xml = $this->retrieve( "Settings" );
+        return ( string ) $xml->RedactActivityEmail ? 1 : 0;
+    }
+
+    /**
+     * Retrieves AllowMultipleCaseClients setting
+     * 
+     * @return string 1 if allowed, 0 if not
+     */      
+    function getAllowMultipleCaseClients(  ) {
+        $xml = $this->retrieve( "Settings" );
+        return ( string ) $xml->AllowMultipleCaseClients ? 1 : 0;
+    }    
 }

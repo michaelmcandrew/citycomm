@@ -1,15 +1,23 @@
 /* CiviCRM Print Media Stylesheet */
 
 /* Hide any buttons or other form items when printing*/
-.form-item {
+#crm-container .buttons, #crm-container .crm-submit-buttons, #crm-container .crm-actions-ribbon, #crm-container .form-submit {
      display: none;
 }
+
+table.form-layout td, table.form-layout th {
+  border: 1px solid grey;
+  padding: 4px;
+  margin: 0px;
+}
+
 .form-item .element-right{
      display: none;
  }
 #crm-container {   
     overflow: visible !important;
-    font-family      : serif;	
+    font-family      : serif;
+    margin           : 0px 10px 0px 10px;	
 }
 
 /* CSS for Print and PDF of Reports */
@@ -17,6 +25,11 @@
     border           : 1px groove #DDDDDD;
     width            : 100%;
     border-collapse  : collapse;
+}
+
+#crm-container .bold {
+    font-weight      : bold;
+    font-size        : 1.1em;
 }
 
 #crm-container .criterial-group {
@@ -69,7 +82,7 @@
 #crm-container table.report-layout th {
     padding          : 4px;
     background-color : #DCDCDC;
-//    text-align       : left;
+    /*text-align       : left;*/
     vertical-align   : top;
 }
 
@@ -80,6 +93,12 @@
 #crm-container table.report-layout th.statistics {
     width            : 5%;
     white-space      : nowrap;
+    text-align       : left; 
+}
+
+#crm-container table.report-layout th.statistics, #crm-container table.report-layout th.label {
+    width            : 20%;
+    text-align       : left; 
 }
 
 #crm-container h1 {
@@ -88,6 +107,12 @@
     font-style       : italic;
     margin           : 0;
 }
+
+#crm-container h2 {
+    text-align       : left;
+    font-size        : 1.2em;
+}
+
 
 #crm-container div#report-date {
     font-size        : .8em;

@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -38,7 +39,8 @@ require_once 'CRM/Core/Form.php';
 /**
  * form to process actions on the field aspect of Custom
  */
-class CRM_Price_Form_Option extends CRM_Core_Form {
+class CRM_Price_Form_Option extends CRM_Core_Form
+{
     /**
      * the price field id saved to the session for an update
      *
@@ -94,7 +96,6 @@ class CRM_Price_Form_Option extends CRM_Core_Form {
      * @return array   array of default values
      * @access public
      */
-
     function setDefaultValues()
     {
         $defaults = array();
@@ -107,7 +108,7 @@ class CRM_Price_Form_Option extends CRM_Core_Form {
 
             // fix the display of the monetary value, CRM-4038
             require_once 'CRM/Utils/Money.php';
-            $defaults['name'] = CRM_Utils_Money::format($defaults['name'], null, '%a');
+            $defaults['value'] = CRM_Utils_Money::format($defaults['value'], null, '%a');
         }
         
         require_once 'CRM/Core/DAO.php';
@@ -120,6 +121,7 @@ class CRM_Price_Form_Option extends CRM_Core_Form {
         }
         
         return $defaults;
+       
     }
     
     /**
@@ -158,20 +160,16 @@ class CRM_Price_Form_Option extends CRM_Core_Form {
                             'optionExists',
                             array( 'CRM_Core_DAO_OptionValue', $this->_oid, $this->_ogId, 'label' ) );
             
-            if ( CRM_Core_DAO::getFieldValue( 'CRM_Core_BAO_PriceField', $this->_fid, 'html_type' ) != 'Text' ) {
-                // the above value is used by query, so the value has to be have a rule
-                $this->addRule( 'label', ts('Please enter a valid value for this field. You may use a - z, A - Z, 1 - 9, spaces and underline ( _ ) characters. The length of the variable string should be less than 31 characters'), 'qfVariable');
-            }
-            
             // value
-            $this->add('text', 'name', ts('Option Amount'),null, true);
+            $this->add('text', 'value', ts('Option Amount'),null, true);
                       
             // the above value is used directly by QF, so the value has to be have a rule
             // please check with Lobo before u comment this
-            $this->addRule('name', ts('Please enter a monetary value for this field.'), 'money');
+            $this->registerRule( 'value', 'callback', 'money', 'CRM_Utils_Rule' );
+            $this->addRule('value', ts('Please enter a monetary value for this field.'), 'money');
             
             // weight
-            $this->add('text', 'weight', ts('Weight'), null, true);
+            $this->add('text', 'weight', ts('Order'), null, true);
             $this->addRule('weight', ts('is a numeric field') , 'numeric');
             
             // is active ?
@@ -182,7 +180,7 @@ class CRM_Price_Form_Option extends CRM_Core_Form {
             
             if ( $this->_fid ) {
                 //hide the default checkbox option for text field
-                $htmlType = CRM_Core_DAO::getFieldValue( 'CRM_Core_BAO_PriceField', $this->_fid, 'html_type' );
+                $htmlType = CRM_Core_DAO::getFieldValue( 'CRM_Price_BAO_Field', $this->_fid, 'html_type' );
                 $this->assign( 'hideDefaultOption', false );
                 if ( $htmlType == 'Text' ) {
                     $this->assign( 'hideDefaultOption', true );
@@ -196,7 +194,6 @@ class CRM_Price_Form_Option extends CRM_Core_Form {
                                            'name'      => ts('Cancel')),
                                     )
                               );
-            
             
             // if view mode pls freeze it with the done button.
             if ($this->_action & CRM_Core_Action::VIEW) {
@@ -223,17 +220,10 @@ class CRM_Price_Form_Option extends CRM_Core_Form {
      * @static
      * @access public
      */
-
-    static function formRule( &$fields, &$files, &$form ) 
+    static function formRule( $fields, $files, $form ) 
     {
-        $errors       = array( );
-        $htmlType = CRM_Core_DAO::getFieldValue( 'CRM_Core_BAO_PriceField', $form->_fid, 'html_type' );
-        if ( $htmlType == 'Text' && $fields['name'] <= 0 ) {
-            $errors['name'] = ts( 'Amount must be greater than zero When Price Field is of Text type' );  
-        } else if ($fields['name'] < 0 ) {
-            $errors['name'] = ts( 'Amount must be greater than zero' ); 
-        }
-        
+        $errors = array( );
+
         return empty($errors) ? true : $errors;
     }
     
@@ -245,7 +235,6 @@ class CRM_Price_Form_Option extends CRM_Core_Form {
      * @return void
      * @access public
      */
-
     public function postProcess()
     {
         require_once 'CRM/Core/OptionValue.php';
@@ -263,11 +252,15 @@ class CRM_Price_Form_Option extends CRM_Core_Form {
         } else {
             $params = $ids = array( );
             $params = $this->controller->exportValues( 'Option' );
-            $fieldLabel = CRM_Core_DAO::getFieldValue( 'CRM_Core_DAO_PriceField', $this->_fid, 'label') ;
+            $fieldLabel = CRM_Core_DAO::getFieldValue( 'CRM_Price_DAO_Field', $this->_fid, 'label') ;
             $params['description'] = $fieldLabel.' - '.$params['label'] ;
-
+            $params['value'] = CRM_Utils_Rule::cleanMoney( trim($params['value']) );
+            
             $groupParams = array( 'id' => $this->_ogId );
            
+            // make name value consistant.
+            $params['name'] = $params['value'];
+            
             $optionValue = CRM_Core_OptionValue::addOptionValue($params, $groupParams, $this->_action, $this->_oid);
             
             CRM_Core_Session::setStatus( ts('The option \'%1\' has been saved.', array(1 => $params['label'])) );

@@ -11,7 +11,7 @@
 /**
  * @package CRM
  * @author Marshal Newrock <marshal@idealso.com>
- * $Id: Dummy.php 13539 2008-03-04 10:56:21Z shot $
+ * $Id: Dummy.php 26018 2010-01-25 09:00:59Z deepak $
  **/
 
 require_once 'CRM/Core/Payment/Dummy.php';
@@ -46,12 +46,12 @@ class CRM_Contribute_Payment_Dummy extends CRM_Core_Payment_Dummy {
      * @static
      */
     static function &singleton( $mode, &$paymentProcessor ) {
-        if (self::$_singleton === null ) {
-            self::$_singleton =& new CRM_Contribute_Payment_Dummy( $mode, $paymentProcessor );
+        $processorName = $paymentProcessor['name'];
+        if (self::$_singleton[$processorName] === null ) {
+            self::$_singleton[$processorName] = new CRM_Contribute_Payment_Dummy( $mode, $paymentProcessor );
         }
-        return self::$_singleton;
+        return self::$_singleton[$processorName];
     }
-
 }
 
 

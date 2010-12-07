@@ -1,15 +1,15 @@
 <?php
 /*
 +--------------------------------------------------------------------+
-| CiviCRM version 2.2                                                |
+| CiviCRM version 3.2                                                |
 +--------------------------------------------------------------------+
-| Copyright CiviCRM LLC (c) 2004-2009                                |
+| Copyright CiviCRM LLC (c) 2004-2010                                |
 +--------------------------------------------------------------------+
 | This file is a part of CiviCRM.                                    |
 |                                                                    |
 | CiviCRM is free software; you can copy, modify, and distribute it  |
 | under the terms of the GNU Affero General Public License           |
-| Version 3, 19 November 2007.                                       |
+| Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
 |                                                                    |
 | CiviCRM is distributed in the hope that it will be useful, but     |
 | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
 | See the GNU Affero General Public License for more details.        |
 |                                                                    |
 | You should have received a copy of the GNU Affero General Public   |
-| License along with this program; if not, contact CiviCRM LLC       |
+| License and the CiviCRM Licensing Exception along                  |
+| with this program; if not, contact CiviCRM LLC                     |
 | at info[AT]civicrm[DOT]org. If you have questions about the        |
 | GNU Affero General Public License or the licensing of CiviCRM,     |
 | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -26,28 +27,253 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
 class CRM_Core_I18n_SchemaStructure
 {
-    static function &columns() 
+    static function &columns()
     {
         static $result = null;
-        if (!$result) $result = unserialize('a:17:{s:20:"civicrm_custom_group";a:3:{s:5:"title";s:11:"varchar(64)";s:8:"help_pre";s:4:"text";s:9:"help_post";s:4:"text";}s:20:"civicrm_custom_field";a:3:{s:5:"label";s:12:"varchar(255)";s:8:"help_pre";s:4:"text";s:9:"help_post";s:4:"text";}s:20:"civicrm_option_group";a:2:{s:5:"label";s:12:"varchar(255)";s:11:"description";s:12:"varchar(255)";}s:17:"civicrm_price_set";a:3:{s:5:"title";s:12:"varchar(255)";s:8:"help_pre";s:4:"text";s:9:"help_post";s:4:"text";}s:15:"civicrm_contact";a:7:{s:9:"sort_name";s:12:"varchar(128)";s:12:"display_name";s:12:"varchar(128)";s:10:"first_name";s:11:"varchar(64)";s:11:"middle_name";s:11:"varchar(64)";s:9:"last_name";s:11:"varchar(64)";s:14:"household_name";s:12:"varchar(128)";s:17:"organization_name";s:12:"varchar(128)";}s:16:"civicrm_premiums";a:2:{s:20:"premiums_intro_title";s:12:"varchar(255)";s:19:"premiums_intro_text";s:4:"text";}s:15:"civicrm_product";a:3:{s:4:"name";s:12:"varchar(255)";s:11:"description";s:4:"text";s:7:"options";s:4:"text";}s:23:"civicrm_membership_type";a:2:{s:4:"name";s:12:"varchar(128)";s:11:"description";s:12:"varchar(255)";}s:25:"civicrm_membership_status";a:1:{s:4:"name";s:12:"varchar(128)";}s:19:"civicrm_tell_friend";a:5:{s:5:"title";s:12:"varchar(255)";s:5:"intro";s:4:"text";s:17:"suggested_message";s:4:"text";s:14:"thankyou_title";s:12:"varchar(255)";s:13:"thankyou_text";s:4:"text";}s:20:"civicrm_option_value";a:2:{s:5:"label";s:12:"varchar(255)";s:11:"description";s:12:"varchar(255)";}s:19:"civicrm_price_field";a:3:{s:5:"label";s:12:"varchar(255)";s:8:"help_pre";s:4:"text";s:9:"help_post";s:4:"text";}s:25:"civicrm_contribution_page";a:13:{s:5:"title";s:12:"varchar(255)";s:10:"intro_text";s:4:"text";s:14:"pay_later_text";s:4:"text";s:17:"pay_later_receipt";s:4:"text";s:14:"thankyou_title";s:12:"varchar(255)";s:13:"thankyou_text";s:4:"text";s:15:"thankyou_footer";s:4:"text";s:16:"for_organization";s:4:"text";s:17:"receipt_from_name";s:12:"varchar(255)";s:12:"receipt_text";s:4:"text";s:11:"footer_text";s:4:"text";s:17:"honor_block_title";s:12:"varchar(255)";s:16:"honor_block_text";s:4:"text";}s:24:"civicrm_membership_block";a:4:{s:9:"new_title";s:12:"varchar(255)";s:8:"new_text";s:4:"text";s:13:"renewal_title";s:12:"varchar(255)";s:12:"renewal_text";s:4:"text";}s:16:"civicrm_uf_group";a:3:{s:5:"title";s:11:"varchar(64)";s:8:"help_pre";s:4:"text";s:9:"help_post";s:4:"text";}s:16:"civicrm_uf_field";a:2:{s:9:"help_post";s:4:"text";s:5:"label";s:12:"varchar(255)";}s:13:"civicrm_event";a:18:{s:5:"title";s:12:"varchar(255)";s:7:"summary";s:4:"text";s:11:"description";s:4:"text";s:22:"registration_link_text";s:12:"varchar(255)";s:15:"event_full_text";s:4:"text";s:9:"fee_label";s:12:"varchar(255)";s:10:"intro_text";s:4:"text";s:11:"footer_text";s:4:"text";s:13:"confirm_title";s:12:"varchar(255)";s:12:"confirm_text";s:4:"text";s:19:"confirm_footer_text";s:4:"text";s:18:"confirm_email_text";s:4:"text";s:17:"confirm_from_name";s:12:"varchar(255)";s:14:"thankyou_title";s:12:"varchar(255)";s:13:"thankyou_text";s:4:"text";s:20:"thankyou_footer_text";s:4:"text";s:14:"pay_later_text";s:4:"text";s:17:"pay_later_receipt";s:4:"text";}}');
+        if (!$result) {
+            $result = array(
+                'civicrm_option_group' => array(
+                    'label' => 'varchar(255)',
+                    'description' => 'varchar(255)',
+                ) ,
+                'civicrm_contact' => array(
+                    'sort_name' => 'varchar(128)',
+                    'display_name' => 'varchar(128)',
+                    'first_name' => 'varchar(64)',
+                    'middle_name' => 'varchar(64)',
+                    'last_name' => 'varchar(64)',
+                    'email_greeting_display' => 'varchar(255)',
+                    'postal_greeting_display' => 'varchar(255)',
+                    'addressee_display' => 'varchar(255)',
+                    'household_name' => 'varchar(128)',
+                    'organization_name' => 'varchar(128)',
+                ) ,
+                'civicrm_contact_type' => array(
+                    'label' => 'varchar(64)',
+                    'description' => 'text',
+                ) ,
+                'civicrm_mailing_component' => array(
+                    'name' => 'varchar(64)',
+                    'subject' => 'varchar(255)',
+                    'body_html' => 'text',
+                    'body_text' => 'text',
+                ) ,
+                'civicrm_mailing' => array(
+                    'name' => 'varchar(128)',
+                    'from_name' => 'varchar(128)',
+                    'subject' => 'varchar(128)',
+                    'body_text' => 'longtext',
+                    'body_html' => 'longtext',
+                ) ,
+                'civicrm_premiums' => array(
+                    'premiums_intro_title' => 'varchar(255)',
+                    'premiums_intro_text' => 'text',
+                ) ,
+                'civicrm_product' => array(
+                    'name' => 'varchar(255)',
+                    'description' => 'text',
+                    'options' => 'text',
+                ) ,
+                'civicrm_membership_type' => array(
+                    'name' => 'varchar(128)',
+                    'description' => 'varchar(255)',
+                ) ,
+                'civicrm_membership_status' => array(
+                    'label' => 'varchar(128)',
+                ) ,
+                'civicrm_participant_status_type' => array(
+                    'label' => 'varchar(255)',
+                ) ,
+                'civicrm_tell_friend' => array(
+                    'title' => 'varchar(255)',
+                    'intro' => 'text',
+                    'suggested_message' => 'text',
+                    'thankyou_title' => 'varchar(255)',
+                    'thankyou_text' => 'text',
+                ) ,
+                'civicrm_price_set' => array(
+                    'title' => 'varchar(255)',
+                    'help_pre' => 'text',
+                    'help_post' => 'text',
+                ) ,
+                'civicrm_custom_group' => array(
+                    'title' => 'varchar(64)',
+                    'help_pre' => 'text',
+                    'help_post' => 'text',
+                ) ,
+                'civicrm_custom_field' => array(
+                    'label' => 'varchar(255)',
+                    'help_pre' => 'text',
+                    'help_post' => 'text',
+                ) ,
+                'civicrm_dashboard' => array(
+                    'label' => 'varchar(255)',
+                ) ,
+                'civicrm_option_value' => array(
+                    'label' => 'varchar(255)',
+                    'description' => 'varchar(255)',
+                ) ,
+                'civicrm_contribution_page' => array(
+                    'title' => 'varchar(255)',
+                    'intro_text' => 'text',
+                    'pay_later_text' => 'text',
+                    'pay_later_receipt' => 'text',
+                    'thankyou_title' => 'varchar(255)',
+                    'thankyou_text' => 'text',
+                    'thankyou_footer' => 'text',
+                    'for_organization' => 'text',
+                    'receipt_from_name' => 'varchar(255)',
+                    'receipt_text' => 'text',
+                    'footer_text' => 'text',
+                    'honor_block_title' => 'varchar(255)',
+                    'honor_block_text' => 'text',
+                ) ,
+                'civicrm_membership_block' => array(
+                    'new_title' => 'varchar(255)',
+                    'new_text' => 'text',
+                    'renewal_title' => 'varchar(255)',
+                    'renewal_text' => 'text',
+                ) ,
+                'civicrm_price_field' => array(
+                    'label' => 'varchar(255)',
+                    'help_pre' => 'text',
+                    'help_post' => 'text',
+                ) ,
+                'civicrm_uf_group' => array(
+                    'title' => 'varchar(64)',
+                    'help_pre' => 'text',
+                    'help_post' => 'text',
+                ) ,
+                'civicrm_uf_field' => array(
+                    'help_post' => 'text',
+                    'help_pre' => 'text',
+                    'label' => 'varchar(255)',
+                ) ,
+                'civicrm_address' => array(
+                    'street_address' => 'varchar(96)',
+                    'supplemental_address_1' => 'varchar(96)',
+                    'supplemental_address_2' => 'varchar(96)',
+                    'supplemental_address_3' => 'varchar(96)',
+                    'city' => 'varchar(64)',
+                    'name' => 'varchar(255)',
+                ) ,
+                'civicrm_event' => array(
+                    'title' => 'varchar(255)',
+                    'summary' => 'text',
+                    'description' => 'text',
+                    'registration_link_text' => 'varchar(255)',
+                    'event_full_text' => 'text',
+                    'fee_label' => 'varchar(255)',
+                    'intro_text' => 'text',
+                    'footer_text' => 'text',
+                    'confirm_title' => 'varchar(255)',
+                    'confirm_text' => 'text',
+                    'confirm_footer_text' => 'text',
+                    'confirm_email_text' => 'text',
+                    'confirm_from_name' => 'varchar(255)',
+                    'thankyou_title' => 'varchar(255)',
+                    'thankyou_text' => 'text',
+                    'thankyou_footer_text' => 'text',
+                    'pay_later_text' => 'text',
+                    'pay_later_receipt' => 'text',
+                    'waitlist_text' => 'text',
+                    'approval_req_text' => 'text',
+                    'template_title' => 'varchar(255)',
+                ) ,
+            );
+        }
         return $result;
     }
-    static function &indices() 
+    static function &indices()
     {
         static $result = null;
-        if (!$result) $result = unserialize('a:4:{s:20:"civicrm_custom_group";a:1:{s:16:"UI_title_extends";a:4:{s:4:"name";s:16:"UI_title_extends";s:5:"field";a:2:{i:0;s:5:"title";i:1;s:7:"extends";}s:11:"localizable";b:1;s:6:"unique";b:1;}}s:20:"civicrm_custom_field";a:1:{s:24:"UI_label_custom_group_id";a:4:{s:4:"name";s:24:"UI_label_custom_group_id";s:5:"field";a:2:{i:0;s:5:"label";i:1;s:15:"custom_group_id";}s:11:"localizable";b:1;s:6:"unique";b:1;}}s:17:"civicrm_price_set";a:1:{s:8:"UI_title";a:4:{s:4:"name";s:8:"UI_title";s:5:"field";a:1:{i:0;s:5:"title";}s:11:"localizable";b:1;s:6:"unique";b:1;}}s:15:"civicrm_contact";a:5:{s:15:"index_sort_name";a:3:{s:4:"name";s:15:"index_sort_name";s:5:"field";a:1:{i:0;s:9:"sort_name";}s:11:"localizable";b:1;}s:16:"index_first_name";a:3:{s:4:"name";s:16:"index_first_name";s:5:"field";a:1:{i:0;s:10:"first_name";}s:11:"localizable";b:1;}s:15:"index_last_name";a:3:{s:4:"name";s:15:"index_last_name";s:5:"field";a:1:{i:0;s:9:"last_name";}s:11:"localizable";b:1;}s:20:"index_household_name";a:3:{s:4:"name";s:20:"index_household_name";s:5:"field";a:1:{i:0;s:14:"household_name";}s:11:"localizable";b:1;}s:23:"index_organization_name";a:3:{s:4:"name";s:23:"index_organization_name";s:5:"field";a:1:{i:0;s:17:"organization_name";}s:11:"localizable";b:1;}}}');
+        if (!$result) {
+            $result = array(
+                'civicrm_contact' => array(
+                    'index_sort_name' => array(
+                        'name' => 'index_sort_name',
+                        'field' => array(
+                            'sort_name',
+                        ) ,
+                    ) ,
+                    'index_first_name' => array(
+                        'name' => 'index_first_name',
+                        'field' => array(
+                            'first_name',
+                        ) ,
+                    ) ,
+                    'index_last_name' => array(
+                        'name' => 'index_last_name',
+                        'field' => array(
+                            'last_name',
+                        ) ,
+                    ) ,
+                    'index_household_name' => array(
+                        'name' => 'index_household_name',
+                        'field' => array(
+                            'household_name',
+                        ) ,
+                    ) ,
+                    'index_organization_name' => array(
+                        'name' => 'index_organization_name',
+                        'field' => array(
+                            'organization_name',
+                        ) ,
+                    ) ,
+                ) ,
+                'civicrm_price_set' => array(
+                    'UI_title' => array(
+                        'name' => 'UI_title',
+                        'field' => array(
+                            'title',
+                        ) ,
+                        'unique' => 1,
+                    ) ,
+                ) ,
+                'civicrm_custom_group' => array(
+                    'UI_title_extends' => array(
+                        'name' => 'UI_title_extends',
+                        'field' => array(
+                            'title',
+                            'extends',
+                        ) ,
+                        'unique' => 1,
+                    ) ,
+                ) ,
+                'civicrm_custom_field' => array(
+                    'UI_label_custom_group_id' => array(
+                        'name' => 'UI_label_custom_group_id',
+                        'field' => array(
+                            'label',
+                            'custom_group_id',
+                        ) ,
+                        'unique' => 1,
+                    ) ,
+                ) ,
+                'civicrm_address' => array(
+                    'index_city' => array(
+                        'name' => 'index_city',
+                        'field' => array(
+                            'city',
+                        ) ,
+                    ) ,
+                ) ,
+            );
+        }
         return $result;
     }
-    static function &tables() 
+    static function &tables()
     {
         static $result = null;
-        if (!$result) $result = array_keys(self::columns());
+        if (!$result) {
+            $result = array_keys(self::columns());
+        }
         return $result;
     }
 }

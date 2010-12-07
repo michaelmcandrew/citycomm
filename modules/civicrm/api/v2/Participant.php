@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -26,15 +27,13 @@
 */
 
 /**
+ * File for the CiviCRM APIv2 participant functions
  *
- * Definition of CRM API for Participant.
- * More detailed documentation can be found 
- * {@link http://objectledge.org/confluence/display/CRM/CRM+v1.0+Public+APIs
- * here}
- *
- * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
- * $Id$
+ * @package CiviCRM_APIv2
+ * @subpackage API_Participant
+ * 
+ * @copyright CiviCRM LLC (c) 2004-2010
+ * @version $Id: Participant.php 30452 2010-11-01 13:16:44Z rahulbile $
  *
  */
 
@@ -75,7 +74,11 @@ function civicrm_participant_create(&$params)
     if ( !isset($params['register_date'] )) {
         $params['register_date']= date( 'YmdHis' );
     }
-    
+    $errors= civicrm_participant_check_params( $params );
+    if ( civicrm_error( $errors ) ) {
+        return $errors;
+    }
+     
     require_once 'CRM/Event/BAO/Participant.php';
     $participant = CRM_Event_BAO_Participant::create($params);
     
@@ -139,7 +142,7 @@ function &civicrm_participant_get( &$params ) {
  * 
  * This api is used for finding an existing participant record.
  *
- * @params  array  $params     an associative array of name/value property values of civicrm_participant
+ * @param  array  $params     an associative array of name/value property values of civicrm_participant
  *
  * @return  participant property values.
  * @access public
@@ -147,6 +150,10 @@ function &civicrm_participant_get( &$params ) {
 
 function &civicrm_participant_search( &$params ) {
 
+    if( ! is_array($params) ) {
+        return civicrm_create_error( 'Params need to be of type array!' );
+    }
+    
     $inputParams      = array( );
     $returnProperties = array( );
     $otherVars = array( 'sort', 'offset', 'rowCount' );
@@ -176,7 +183,7 @@ function &civicrm_participant_search( &$params ) {
     }
 
     $newParams =& CRM_Contact_BAO_Query::convertFormValues( $params);
-    $query =& new CRM_Contact_BAO_Query( $newParams, $returnProperties, null );
+    $query = new CRM_Contact_BAO_Query( $newParams, $returnProperties, null );
     list( $select, $from, $where ) = $query->query( );
     
     $sql = "$select $from $where";  
@@ -192,7 +199,7 @@ function &civicrm_participant_search( &$params ) {
         $participant[$dao->participant_id] = $query->store( $dao );
     }
     $dao->free( );
-    
+
     return $participant;
 
 }
@@ -212,38 +219,19 @@ function &civicrm_participant_update(&$params)
 {
     _civicrm_initialize();
     if ( !is_array( $params ) ) {
-        $error = civicrm_create_error( 'Parameters is not an array' );
-        return $error;
+        return civicrm_create_error( 'Parameters is not an array' );
     }
     
     if ( !isset($params['id']) ) {
         $error = civicrm_create_error( 'Required parameter missing' );
         return $error;
     }
-    
+    $errors= civicrm_participant_check_params( $params );
+    if ( civicrm_error( $errors ) ) {
+        return $errors;
+    }
     require_once 'CRM/Event/BAO/Participant.php';
-    $participantBAO =& new CRM_Event_BAO_Participant( );
-    $participantBAO->id = $params['id'];
-    $fields = $participantBAO->fields( );
-    $datefields = array("register_date" => "register_date");    
-    foreach ( array('source','status_id','register_date','role_id') as $v) {    
-        $fields[$v] = $fields['participant_'.$v];
-        unset( $fields['participant_'.$v] );
-    }
-    
-    if ($participantBAO->find(true)) {
-        foreach ( $fields as $name => $field) {
-            if (array_key_exists($name, $params)) {
-                $participantBAO->$name = $params[$name];
-            }
-        }
-        
-        //fix the dates 
-        foreach ( $datefields as $key => $value ) {
-            $participantBAO->$key  = CRM_Utils_Date::customFormat($participantBAO->$key,'%Y%m%d');
-        }
-        $participantBAO->save();
-    }
+    $participantBAO = CRM_Event_BAO_Participant::create( $params );
     
     $participant = array();
     _civicrm_object_to_array( $participantBAO, $participant );
@@ -396,6 +384,12 @@ function civicrm_participant_payment_delete( &$params )
     return $participant->deleteParticipantPayment( $params ) ? civicrm_create_success( ) : civicrm_create_error('Error while deleting participantPayment');
 }
 
+/**
+ *
+ * @param <type> $params
+ * @param <type> $onDuplicate
+ * @return <type>
+ */
 function civicrm_create_participant_formatted( &$params , $onDuplicate ) 
 {
     _civicrm_initialize( );
@@ -408,7 +402,7 @@ function civicrm_create_participant_formatted( &$params , $onDuplicate )
     require_once 'CRM/Event/Import/Parser.php';
     if ( $onDuplicate != CRM_Event_Import_Parser::DUPLICATE_NOCHECK) {
         CRM_Core_Error::reset( );
-        $error = civicrm_participant_check_params( $params );
+        $error = civicrm_participant_check_params( $params ,true );
         if ( civicrm_error( $error ) ) {
             return $error;
         }
@@ -417,24 +411,54 @@ function civicrm_create_participant_formatted( &$params , $onDuplicate )
     return civicrm_participant_create( $params );
 }
 
-function civicrm_participant_check_params( &$params ) 
+/**
+ *
+ * @param <type> $params
+ * @return <type> 
+ */
+function civicrm_participant_check_params( &$params ,$checkDuplicate = false ) 
 {
     require_once 'CRM/Event/BAO/Participant.php';
-    
-    $result = array( );
-    
-    if( CRM_Event_BAO_Participant::checkDuplicate( $params, $result ) ) {
-        $participantID = array_pop( $result );
-        
-        $error = CRM_Core_Error::createError( "Found matching participant record.", 
-                                              CRM_Core_Error::DUPLICATE_PARTICIPANT, 
-                                              'Fatal', $participantID );
-        
-        return civicrm_create_error( $error->pop( ),
-                                     array( 'contactID'     => $params['contact_id'],
-                                            'participantID' => $participantID ) );
+    //check if participant id is valid or not
+    if( CRM_Utils_Array::value( 'id', $params ) ) {
+        $participant = new CRM_Event_BAO_Participant();
+        $participant->id = $params['id'];
+        if ( !$participant->find( true )) {
+            return civicrm_create_error( ts( 'Participant  id is not valid' ));
+        }
+    }
+    require_once 'CRM/Contact/BAO/Contact.php';
+    //check if contact id is valid or not
+    if( CRM_Utils_Array::value( 'contact_id', $params ) ) {
+        $contact = new CRM_Contact_BAO_Contact();
+        $contact->id = $params['contact_id'];
+        if ( !$contact->find( true )) {
+            return civicrm_create_error( ts( 'Contact id is not valid' ));
+        }
     }
     
+    //check that event id is not an template
+    if( CRM_Utils_Array::value( 'event_id', $params ) ) {
+        $isTemplate = CRM_Core_DAO::getFieldValue( 'CRM_Event_DAO_Event', $params['event_id'], 'is_template' );
+        if ( !empty( $isTemplate ) ) {
+            return civicrm_create_error( ts( 'Event templates are not meant to be registered' ));
+        }
+    }
+    
+    $result = array( );
+    if( $checkDuplicate ) {
+        if( CRM_Event_BAO_Participant::checkDuplicate( $params, $result ) ) {
+            $participantID = array_pop( $result );
+            
+            $error = CRM_Core_Error::createError( "Found matching participant record.", 
+                                                  CRM_Core_Error::DUPLICATE_PARTICIPANT, 
+                                                  'Fatal', $participantID );
+            
+            return civicrm_create_error( $error->pop( ),
+                                         array( 'contactID'     => $params['contact_id'],
+                                                'participantID' => $participantID ) );
+        }
+    }
     return true;
 }
 

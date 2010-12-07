@@ -1,15 +1,15 @@
 <?php
 /*
 +--------------------------------------------------------------------+
-| CiviCRM version 2.2                                                |
+| CiviCRM version 3.2                                                |
 +--------------------------------------------------------------------+
-| Copyright CiviCRM LLC (c) 2004-2009                                |
+| Copyright CiviCRM LLC (c) 2004-2010                                |
 +--------------------------------------------------------------------+
 | This file is a part of CiviCRM.                                    |
 |                                                                    |
 | CiviCRM is free software; you can copy, modify, and distribute it  |
 | under the terms of the GNU Affero General Public License           |
-| Version 3, 19 November 2007.                                       |
+| Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
 |                                                                    |
 | CiviCRM is distributed in the hope that it will be useful, but     |
 | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
 | See the GNU Affero General Public License for more details.        |
 |                                                                    |
 | You should have received a copy of the GNU Affero General Public   |
-| License along with this program; if not, contact CiviCRM LLC       |
+| License and the CiviCRM Licensing Exception along                  |
+| with this program; if not, contact CiviCRM LLC                     |
 | at info[AT]civicrm[DOT]org. If you have questions about the        |
 | GNU Affero General Public License or the licensing of CiviCRM,     |
 | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -26,7 +27,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -98,7 +99,7 @@ class CRM_Event_DAO_Participant extends CRM_Core_DAO
      */
     public $event_id;
     /**
-     * Participant status ID. Implicit FK to civicrm_option_value where option_group = participant_status. Default of 1 should map to status = Registered.
+     * Participant status ID. FK to civicrm_participant_status_type. Default of 1 should map to status = Registered.
      *
      * @var int unsigned
      */
@@ -124,7 +125,7 @@ class CRM_Event_DAO_Participant extends CRM_Core_DAO
     /**
      * Populate with the label (text) associated with a fee level for paid events with multiple levels. Note that we store the label value and not the key
      *
-     * @var string
+     * @var text
      */
     public $fee_level;
     /**
@@ -156,12 +157,18 @@ class CRM_Event_DAO_Participant extends CRM_Core_DAO
      */
     public $discount_id;
     /**
+     * 3 character string, value derived from config setting.
+     *
+     * @var string
+     */
+    public $fee_currency;
+    /**
      * class constructor
      *
      * @access public
      * @return civicrm_participant
      */
-    function __construct() 
+    function __construct()
     {
         parent::__construct();
     }
@@ -171,12 +178,13 @@ class CRM_Event_DAO_Participant extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &links() 
+    function &links()
     {
         if (!(self::$_links)) {
             self::$_links = array(
                 'contact_id' => 'civicrm_contact:id',
                 'event_id' => 'civicrm_event:id',
+                'status_id' => 'civicrm_participant_status_type:id',
                 'registered_by_id' => 'civicrm_participant:id',
                 'discount_id' => 'civicrm_discount:id',
             );
@@ -189,7 +197,7 @@ class CRM_Event_DAO_Participant extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &fields() 
+    function &fields()
     {
         if (!(self::$_fields)) {
             self::$_fields = array(
@@ -213,6 +221,7 @@ class CRM_Event_DAO_Participant extends CRM_Core_DAO
                     'headerPattern' => '/contact(.?id)?/i',
                     'dataPattern' => '',
                     'export' => true,
+                    'FKClassName' => 'CRM_Contact_DAO_Contact',
                 ) ,
                 'event_id' => array(
                     'name' => 'event_id',
@@ -223,30 +232,35 @@ class CRM_Event_DAO_Participant extends CRM_Core_DAO
                     'headerPattern' => '/event id$/i',
                     'dataPattern' => '',
                     'export' => true,
+                    'FKClassName' => 'CRM_Event_DAO_Event',
                 ) ,
                 'participant_status_id' => array(
                     'name' => 'status_id',
                     'type' => CRM_Utils_Type::T_INT,
-                    'title' => ts('Participant Status') ,
+                    'title' => ts('Participant Status Id') ,
+                    'required' => true,
                     'import' => true,
                     'where' => 'civicrm_participant.status_id',
                     'headerPattern' => '/(participant.)?(status)$/i',
                     'dataPattern' => '',
-                    'export' => true,
+                    'export' => false,
+                    'default' => '',
+                    'FKClassName' => 'CRM_Event_DAO_ParticipantStatusType',
                 ) ,
                 'participant_role_id' => array(
                     'name' => 'role_id',
                     'type' => CRM_Utils_Type::T_INT,
-                    'title' => ts('Participant Role') ,
+                    'title' => ts('Participant Role Id') ,
                     'import' => true,
                     'where' => 'civicrm_participant.role_id',
                     'headerPattern' => '/(participant.)?(role)$/i',
                     'dataPattern' => '',
-                    'export' => true,
+                    'export' => false,
+                    'default' => 'UL',
                 ) ,
                 'participant_register_date' => array(
                     'name' => 'register_date',
-                    'type' => CRM_Utils_Type::T_DATE+CRM_Utils_Type::T_TIME,
+                    'type' => CRM_Utils_Type::T_DATE + CRM_Utils_Type::T_TIME,
                     'title' => ts('Register date') ,
                     'import' => true,
                     'where' => 'civicrm_participant.register_date',
@@ -268,10 +282,8 @@ class CRM_Event_DAO_Participant extends CRM_Core_DAO
                 ) ,
                 'participant_fee_level' => array(
                     'name' => 'fee_level',
-                    'type' => CRM_Utils_Type::T_STRING,
+                    'type' => CRM_Utils_Type::T_TEXT,
                     'title' => ts('Fee level') ,
-                    'maxlength' => 255,
-                    'size' => CRM_Utils_Type::HUGE,
                     'import' => true,
                     'where' => 'civicrm_participant.fee_level',
                     'headerPattern' => '/^(f(ee\s)?level)$/i',
@@ -312,11 +324,33 @@ class CRM_Event_DAO_Participant extends CRM_Core_DAO
                     'name' => 'registered_by_id',
                     'type' => CRM_Utils_Type::T_INT,
                     'title' => ts('Registered By ID') ,
+                    'import' => true,
+                    'where' => 'civicrm_participant.registered_by_id',
+                    'headerPattern' => '',
+                    'dataPattern' => '',
+                    'export' => true,
+                    'default' => 'UL',
+                    'FKClassName' => 'CRM_Event_DAO_Participant',
                 ) ,
                 'participant_discount_id' => array(
                     'name' => 'discount_id',
                     'type' => CRM_Utils_Type::T_INT,
                     'title' => ts('Discount ID') ,
+                    'default' => 'UL',
+                    'FKClassName' => 'CRM_Core_DAO_Discount',
+                ) ,
+                'participant_fee_currency' => array(
+                    'name' => 'fee_currency',
+                    'type' => CRM_Utils_Type::T_STRING,
+                    'title' => ts('Fee Currency') ,
+                    'required' => true,
+                    'maxlength' => 3,
+                    'size' => CRM_Utils_Type::FOUR,
+                    'import' => true,
+                    'where' => 'civicrm_participant.fee_currency',
+                    'headerPattern' => '/(fee)?.?cur(rency)?/i',
+                    'dataPattern' => '/^[A-Z]{3}$/i',
+                    'export' => true,
                 ) ,
             );
         }
@@ -328,7 +362,7 @@ class CRM_Event_DAO_Participant extends CRM_Core_DAO
      * @access public
      * @return string
      */
-    function getTableName() 
+    function getTableName()
     {
         return self::$_tableName;
     }
@@ -338,7 +372,7 @@ class CRM_Event_DAO_Participant extends CRM_Core_DAO
      * @access public
      * @return boolean
      */
-    function getLog() 
+    function getLog()
     {
         return self::$_log;
     }
@@ -348,17 +382,17 @@ class CRM_Event_DAO_Participant extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &import($prefix = false) 
+    function &import($prefix = false)
     {
         if (!(self::$_import)) {
             self::$_import = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('import', $field)) {
                     if ($prefix) {
-                        self::$_import['participant'] = &$fields[$name];
+                        self::$_import['participant'] = & $fields[$name];
                     } else {
-                        self::$_import[$name] = &$fields[$name];
+                        self::$_import[$name] = & $fields[$name];
                     }
                 }
             }
@@ -371,17 +405,17 @@ class CRM_Event_DAO_Participant extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &export($prefix = false) 
+    function &export($prefix = false)
     {
         if (!(self::$_export)) {
             self::$_export = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('export', $field)) {
                     if ($prefix) {
-                        self::$_export['participant'] = &$fields[$name];
+                        self::$_export['participant'] = & $fields[$name];
                     } else {
-                        self::$_export[$name] = &$fields[$name];
+                        self::$_export[$name] = & $fields[$name];
                     }
                 }
             }

@@ -1,15 +1,15 @@
 <?php
 /*
 +--------------------------------------------------------------------+
-| CiviCRM version 2.2                                                |
+| CiviCRM version 3.2                                                |
 +--------------------------------------------------------------------+
-| Copyright CiviCRM LLC (c) 2004-2009                                |
+| Copyright CiviCRM LLC (c) 2004-2010                                |
 +--------------------------------------------------------------------+
 | This file is a part of CiviCRM.                                    |
 |                                                                    |
 | CiviCRM is free software; you can copy, modify, and distribute it  |
 | under the terms of the GNU Affero General Public License           |
-| Version 3, 19 November 2007.                                       |
+| Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
 |                                                                    |
 | CiviCRM is distributed in the hope that it will be useful, but     |
 | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
 | See the GNU Affero General Public License for more details.        |
 |                                                                    |
 | You should have received a copy of the GNU Affero General Public   |
-| License along with this program; if not, contact CiviCRM LLC       |
+| License and the CiviCRM Licensing Exception along                  |
+| with this program; if not, contact CiviCRM LLC                     |
 | at info[AT]civicrm[DOT]org. If you have questions about the        |
 | GNU Affero General Public License or the licensing of CiviCRM,     |
 | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -26,7 +27,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -127,6 +128,12 @@ class CRM_Contribute_DAO_Product extends CRM_Core_DAO
      */
     public $price;
     /**
+     * 3 character string, value from config setting or input via user.
+     *
+     * @var string
+     */
+    public $currency;
+    /**
      * Minimum contribution required to be eligible to select this premium.
      *
      * @var float
@@ -186,7 +193,7 @@ class CRM_Contribute_DAO_Product extends CRM_Core_DAO
      * @access public
      * @return civicrm_product
      */
-    function __construct() 
+    function __construct()
     {
         parent::__construct();
     }
@@ -196,7 +203,7 @@ class CRM_Contribute_DAO_Product extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &fields() 
+    function &fields()
     {
         if (!(self::$_fields)) {
             self::$_fields = array(
@@ -257,6 +264,14 @@ class CRM_Contribute_DAO_Product extends CRM_Core_DAO
                     'type' => CRM_Utils_Type::T_MONEY,
                     'title' => ts('Price') ,
                 ) ,
+                'currency' => array(
+                    'name' => 'currency',
+                    'type' => CRM_Utils_Type::T_STRING,
+                    'title' => ts('Currency') ,
+                    'required' => true,
+                    'maxlength' => 3,
+                    'size' => CRM_Utils_Type::FOUR,
+                ) ,
                 'min_contribution' => array(
                     'name' => 'min_contribution',
                     'type' => CRM_Utils_Type::T_MONEY,
@@ -277,16 +292,21 @@ class CRM_Contribute_DAO_Product extends CRM_Core_DAO
                     'name' => 'period_type',
                     'type' => CRM_Utils_Type::T_ENUM,
                     'title' => ts('Period Type') ,
+                    'default' => 'rolling',
+                    'enumValues' => 'rolling,fixed',
                 ) ,
                 'fixed_period_start_day' => array(
                     'name' => 'fixed_period_start_day',
                     'type' => CRM_Utils_Type::T_INT,
                     'title' => ts('Fixed Period Start Day') ,
+                    'default' => '10',
                 ) ,
                 'duration_unit' => array(
                     'name' => 'duration_unit',
                     'type' => CRM_Utils_Type::T_ENUM,
                     'title' => ts('Duration Unit') ,
+                    'default' => 'year',
+                    'enumValues' => 'day,month,week,year',
                 ) ,
                 'duration_interval' => array(
                     'name' => 'duration_interval',
@@ -297,6 +317,8 @@ class CRM_Contribute_DAO_Product extends CRM_Core_DAO
                     'name' => 'frequency_unit',
                     'type' => CRM_Utils_Type::T_ENUM,
                     'title' => ts('Frequency Unit') ,
+                    'default' => 'month',
+                    'enumValues' => 'day,month,week,year',
                 ) ,
                 'frequency_interval' => array(
                     'name' => 'frequency_interval',
@@ -313,7 +335,7 @@ class CRM_Contribute_DAO_Product extends CRM_Core_DAO
      * @access public
      * @return string
      */
-    function getTableName() 
+    function getTableName()
     {
         global $dbLocale;
         return self::$_tableName . $dbLocale;
@@ -324,7 +346,7 @@ class CRM_Contribute_DAO_Product extends CRM_Core_DAO
      * @access public
      * @return boolean
      */
-    function getLog() 
+    function getLog()
     {
         return self::$_log;
     }
@@ -334,17 +356,17 @@ class CRM_Contribute_DAO_Product extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &import($prefix = false) 
+    function &import($prefix = false)
     {
         if (!(self::$_import)) {
             self::$_import = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('import', $field)) {
                     if ($prefix) {
-                        self::$_import['product'] = &$fields[$name];
+                        self::$_import['product'] = & $fields[$name];
                     } else {
-                        self::$_import[$name] = &$fields[$name];
+                        self::$_import[$name] = & $fields[$name];
                     }
                 }
             }
@@ -357,17 +379,17 @@ class CRM_Contribute_DAO_Product extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &export($prefix = false) 
+    function &export($prefix = false)
     {
         if (!(self::$_export)) {
             self::$_export = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('export', $field)) {
                     if ($prefix) {
-                        self::$_export['product'] = &$fields[$name];
+                        self::$_export['product'] = & $fields[$name];
                     } else {
-                        self::$_export[$name] = &$fields[$name];
+                        self::$_export[$name] = & $fields[$name];
                     }
                 }
             }
@@ -379,7 +401,7 @@ class CRM_Contribute_DAO_Product extends CRM_Core_DAO
      *
      * @return array (reference)  the array of enum fields
      */
-    static function &getEnums() 
+    static function &getEnums()
     {
         static $enums = array(
             'period_type',
@@ -396,7 +418,7 @@ class CRM_Contribute_DAO_Product extends CRM_Core_DAO
      *
      * @return string  the display value of the enum
      */
-    static function tsEnum($field, $value) 
+    static function tsEnum($field, $value)
     {
         static $translations = null;
         if (!$translations) {
@@ -427,9 +449,9 @@ class CRM_Contribute_DAO_Product extends CRM_Core_DAO
      * @param array $values (reference)  the array up for enhancing
      * @return void
      */
-    static function addDisplayEnums(&$values) 
+    static function addDisplayEnums(&$values)
     {
-        $enumFields = &CRM_Contribute_DAO_Product::getEnums();
+        $enumFields = & CRM_Contribute_DAO_Product::getEnums();
         foreach($enumFields as $enum) {
             if (isset($values[$enum])) {
                 $values[$enum . '_display'] = CRM_Contribute_DAO_Product::tsEnum($enum, $values[$enum]);

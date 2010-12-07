@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -43,7 +44,8 @@ require_once 'CRM/Core/Page.php';
  * page.
  *
  */
-class CRM_Custom_Page_Field extends CRM_Core_Page {
+class CRM_Custom_Page_Field extends CRM_Core_Page 
+{
     
     /**
      * The group id of the field
@@ -73,8 +75,6 @@ class CRM_Custom_Page_Field extends CRM_Core_Page {
     function &actionLinks()
     {
         if (!isset(self::$_actionLinks)) {
-            // helper variable for nicer formatting
-            $disableExtra = ts('Are you sure you want to disable this custom data field?');
             $deleteExtra = ts('Are you sure you want to delete this custom data field?');
             self::$_actionLinks = array(
                                         CRM_Core_Action::UPDATE  => array(
@@ -97,15 +97,15 @@ class CRM_Custom_Page_Field extends CRM_Core_Page {
                                                                           ),
                                         CRM_Core_Action::DISABLE => array(
                                                                           'name'  => ts('Disable'),
-                                                                          'url'   => 'civicrm/admin/custom/group/field',
-                                                                          'qs'    => 'action=disable&reset=1&gid=%%gid%%&id=%%id%%',
+                                                                          'extra' => 'onclick = "enableDisable( %%id%%,\''. 'CRM_Core_BAO_CustomField' . '\',\'' . 'enable-disable' . '\' );"',
+                                                                          'ref'   => 'disable-action',
                                                                           'title' => ts('Disable Custom Field'),
-                                                                          'extra' => 'onclick = "return confirm(\'' . $disableExtra . '\');"',
+                                                                          
                                                                           ),
                                         CRM_Core_Action::ENABLE  => array(
                                                                           'name'  => ts('Enable'),
-                                                                          'url'   => 'civicrm/admin/custom/group/field',
-                                                                          'qs'    => 'action=enable&reset=1&gid=%%gid%%&id=%%id%%',
+                                                                          'extra' => 'onclick = "enableDisable( %%id%%,\''. 'CRM_Core_BAO_CustomField' . '\',\'' . 'disable-enable' . '\' );"',
+                                                                          'ref'   => 'enable-action',
                                                                           'title' => ts('Enable Custom Field'),
                                                                           ),
                                         CRM_Core_Action::DELETE  => array(
@@ -115,7 +115,6 @@ class CRM_Custom_Page_Field extends CRM_Core_Page {
                                                                           'title' => ts('Delete Custom Field'),
                                                                           'extra' => 'onclick = "return confirm(\'' . $deleteExtra . '\');"',
                                                                           ),
-                        
                                         );
         }
         return self::$_actionLinks;
@@ -133,7 +132,7 @@ class CRM_Custom_Page_Field extends CRM_Core_Page {
     {
         require_once 'CRM/Core/BAO/CustomField.php';
         $customField = array();
-        $customFieldBAO =& new CRM_Core_BAO_CustomField();
+        $customFieldBAO = new CRM_Core_BAO_CustomField();
         
         // fkey is gid
         $customFieldBAO->custom_group_id = $this->_gid;
@@ -143,7 +142,6 @@ class CRM_Custom_Page_Field extends CRM_Core_Page {
         while ($customFieldBAO->fetch()) {
             $customField[$customFieldBAO->id] = array();
             CRM_Core_DAO::storeValues( $customFieldBAO, $customField[$customFieldBAO->id]);
-
             $action = array_sum(array_keys($this->actionLinks()));
             if ($customFieldBAO->is_active) {
                 $action -= CRM_Core_Action::ENABLE;
@@ -151,35 +149,24 @@ class CRM_Custom_Page_Field extends CRM_Core_Page {
                 $action -= CRM_Core_Action::DISABLE;
             }
 
-	    // if Multi Select field is selected in custom field
-            if($customFieldBAO->data_type == 'String' || $customFieldBAO->data_type == 'Int' || $customFieldBAO->data_type == 'Float' || $customFieldBAO->data_type == 'Money') {
-                if( $customFieldBAO->html_type == 'Text' ) {
+            switch($customFieldBAO->data_type) {
+                
+            case "String":
+            case "Int":
+            case "Float":
+            case "Money":
+                // if Multi Select field is selected in custom field
+                if ( $customFieldBAO->html_type == 'Text') {
                     $action -= CRM_Core_Action::BROWSE;
                 } 
-            }
-
-            switch($customFieldBAO->data_type) {
+                break;
+            case "ContactReference":    
             case "Memo":
-                $action -= CRM_Core_Action::BROWSE;
-                break;
-
             case "Date":
-                $action -= CRM_Core_Action::BROWSE;
-                break;
-
             case "Boolean":
-                $action -= CRM_Core_Action::BROWSE;
-                break;
-            
             case "StateProvince":
-                $action -= CRM_Core_Action::BROWSE;
-                break;
             case "Country":
-                $action -= CRM_Core_Action::BROWSE;
-                break;
             case "File":
-                $action -= CRM_Core_Action::BROWSE;
-                break;
             case "Link":
                 $action -= CRM_Core_Action::BROWSE;
                 break;
@@ -188,7 +175,7 @@ class CRM_Custom_Page_Field extends CRM_Core_Page {
             $customFieldDataType = CRM_Core_BAO_CustomField::dataType();
             $customField[$customFieldBAO->id]['data_type'] =
                 $customFieldDataType[$customField[$customFieldBAO->id]['data_type']];
-
+            $customField[$customFieldBAO->id]['order']  = $customField[$customFieldBAO->id]['weight'];
             $customField[$customFieldBAO->id]['action'] = CRM_Core_Action::formLink(self::actionLinks(), $action, 
                                                                                     array('id'  => $customFieldBAO->id,
                                                                                           'gid' => $this->_gid ));
@@ -216,10 +203,10 @@ class CRM_Custom_Page_Field extends CRM_Core_Page {
     function edit($action)
     {
         // create a simple controller for editing custom dataCRM/Custom/Page/Field.php
-        $controller =& new CRM_Core_Controller_Simple('CRM_Custom_Form_Field', ts('Custom Field'), $action);
+        $controller = new CRM_Core_Controller_Simple('CRM_Custom_Form_Field', ts('Custom Field'), $action);
 
         // set the userContext stack
-        $session =& CRM_Core_Session::singleton();
+        $session = CRM_Core_Session::singleton();
         $session->pushUserContext(CRM_Utils_System::url('civicrm/admin/custom/group/field', 'reset=1&action=browse&gid=' . $this->_gid));
        
         $controller->set('gid', $this->_gid);
@@ -254,7 +241,7 @@ class CRM_Custom_Page_Field extends CRM_Core_Page {
             
             $session = & CRM_Core_Session::singleton();
             $session->pushUserContext(CRM_Utils_System::url('civicrm/admin/custom/group/field', 'reset=1&action=browse&gid=' . $this->_gid));
-            $controller =& new CRM_Core_Controller_Simple( 'CRM_Custom_Form_DeleteField',"Delete Custom Field", '' );
+            $controller = new CRM_Core_Controller_Simple( 'CRM_Custom_Form_DeleteField',"Delete Custom Field", '' );
             $id = CRM_Utils_Request::retrieve('id', 'Positive',
                                               $this, false, 0);
             $controller->set('id', $id);
@@ -272,9 +259,6 @@ class CRM_Custom_Page_Field extends CRM_Core_Page {
             CRM_Utils_System::setTitle(ts('%1 - Custom Fields', array(1 => $groupTitle)));
         }
 
-        // get the requested action
-        
-
         // assign vars to templates
         $this->assign('action', $action);
 
@@ -289,13 +273,6 @@ class CRM_Custom_Page_Field extends CRM_Core_Page {
         } else {
             require_once 'CRM/Core/BAO/CustomField.php';
             require_once 'CRM/Core/BAO/UFField.php';
-            if ($action & CRM_Core_Action::DISABLE) {
-                CRM_Core_BAO_CustomField::setIsActive($id, 0);
-                CRM_Core_BAO_UFField::setUFField($id, 0);
-            } else if ($action & CRM_Core_Action::ENABLE) {
-                CRM_Core_BAO_CustomField::setIsActive($id, 1);
-                CRM_Core_BAO_UFField::setUFField($id, 1);
-            } 
             $this->browse();
         }
 
@@ -313,10 +290,11 @@ class CRM_Custom_Page_Field extends CRM_Core_Page {
      */
     function preview($id)
     {
-        $controller =& new CRM_Core_Controller_Simple('CRM_Custom_Form_Preview', ts('Preview Custom Data'), CRM_Core_Action::PREVIEW);
-        $session =& CRM_Core_Session::singleton();
+        $controller = new CRM_Core_Controller_Simple('CRM_Custom_Form_Preview', ts('Preview Custom Data'), CRM_Core_Action::PREVIEW);
+        $session = CRM_Core_Session::singleton();
         $session->pushUserContext(CRM_Utils_System::url('civicrm/admin/custom/group/field', 'reset=1&action=browse&gid=' . $this->_gid));
         $controller->set('fieldId', $id);
+        $controller->set('groupId', $this->_gid);
         $controller->setEmbedded(true);
         $controller->process();
         $controller->run();

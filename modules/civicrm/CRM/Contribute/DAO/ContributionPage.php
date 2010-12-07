@@ -1,15 +1,15 @@
 <?php
 /*
 +--------------------------------------------------------------------+
-| CiviCRM version 2.2                                                |
+| CiviCRM version 3.2                                                |
 +--------------------------------------------------------------------+
-| Copyright CiviCRM LLC (c) 2004-2009                                |
+| Copyright CiviCRM LLC (c) 2004-2010                                |
 +--------------------------------------------------------------------+
 | This file is a part of CiviCRM.                                    |
 |                                                                    |
 | CiviCRM is free software; you can copy, modify, and distribute it  |
 | under the terms of the GNU Affero General Public License           |
-| Version 3, 19 November 2007.                                       |
+| Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
 |                                                                    |
 | CiviCRM is distributed in the hope that it will be useful, but     |
 | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
 | See the GNU Affero General Public License for more details.        |
 |                                                                    |
 | You should have received a copy of the GNU Affero General Public   |
-| License along with this program; if not, contact CiviCRM LLC       |
+| License and the CiviCRM Licensing Exception along                  |
+| with this program; if not, contact CiviCRM LLC                     |
 | at info[AT]civicrm[DOT]org. If you have questions about the        |
 | GNU Affero General Public License or the licensing of CiviCRM,     |
 | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -26,7 +27,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -302,12 +303,24 @@ class CRM_Contribute_DAO_ContributionPage extends CRM_Core_DAO
      */
     public $end_date;
     /**
+     * FK to civicrm_contact, who created this contribution page
+     *
+     * @var int unsigned
+     */
+    public $created_id;
+    /**
+     * Date and time that contribution page was created.
+     *
+     * @var datetime
+     */
+    public $created_date;
+    /**
      * class constructor
      *
      * @access public
      * @return civicrm_contribution_page
      */
-    function __construct() 
+    function __construct()
     {
         parent::__construct();
     }
@@ -317,12 +330,13 @@ class CRM_Contribute_DAO_ContributionPage extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &links() 
+    function &links()
     {
         if (!(self::$_links)) {
             self::$_links = array(
                 'contribution_type_id' => 'civicrm_contribution_type:id',
                 'payment_processor_id' => 'civicrm_payment_processor:id',
+                'created_id' => 'civicrm_contact:id',
             );
         }
         return self::$_links;
@@ -333,7 +347,7 @@ class CRM_Contribute_DAO_ContributionPage extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &fields() 
+    function &fields()
     {
         if (!(self::$_fields)) {
             self::$_fields = array(
@@ -360,10 +374,12 @@ class CRM_Contribute_DAO_ContributionPage extends CRM_Core_DAO
                     'name' => 'contribution_type_id',
                     'type' => CRM_Utils_Type::T_INT,
                     'required' => true,
+                    'FKClassName' => 'CRM_Contribute_DAO_ContributionType',
                 ) ,
                 'payment_processor_id' => array(
                     'name' => 'payment_processor_id',
                     'type' => CRM_Utils_Type::T_INT,
+                    'FKClassName' => 'CRM_Core_DAO_PaymentProcessor',
                 ) ,
                 'is_credit_card_only' => array(
                     'name' => 'is_credit_card_only',
@@ -372,6 +388,7 @@ class CRM_Contribute_DAO_ContributionPage extends CRM_Core_DAO
                 'is_monetary' => array(
                     'name' => 'is_monetary',
                     'type' => CRM_Utils_Type::T_BOOLEAN,
+                    'default' => '',
                 ) ,
                 'is_recur' => array(
                     'name' => 'is_recur',
@@ -460,6 +477,7 @@ class CRM_Contribute_DAO_ContributionPage extends CRM_Core_DAO
                 'is_email_receipt' => array(
                     'name' => 'is_email_receipt',
                     'type' => CRM_Utils_Type::T_BOOLEAN,
+                    'default' => '',
                 ) ,
                 'receipt_from_name' => array(
                     'name' => 'receipt_from_name',
@@ -510,6 +528,7 @@ class CRM_Contribute_DAO_ContributionPage extends CRM_Core_DAO
                 'amount_block_is_active' => array(
                     'name' => 'amount_block_is_active',
                     'type' => CRM_Utils_Type::T_BOOLEAN,
+                    'default' => '',
                 ) ,
                 'honor_block_is_active' => array(
                     'name' => 'honor_block_is_active',
@@ -531,13 +550,23 @@ class CRM_Contribute_DAO_ContributionPage extends CRM_Core_DAO
                 ) ,
                 'start_date' => array(
                     'name' => 'start_date',
-                    'type' => CRM_Utils_Type::T_DATE+CRM_Utils_Type::T_TIME,
+                    'type' => CRM_Utils_Type::T_DATE + CRM_Utils_Type::T_TIME,
                     'title' => ts('Contribution Page Start Date') ,
                 ) ,
                 'end_date' => array(
                     'name' => 'end_date',
-                    'type' => CRM_Utils_Type::T_DATE+CRM_Utils_Type::T_TIME,
+                    'type' => CRM_Utils_Type::T_DATE + CRM_Utils_Type::T_TIME,
                     'title' => ts('Contribution Page End Date') ,
+                ) ,
+                'created_id' => array(
+                    'name' => 'created_id',
+                    'type' => CRM_Utils_Type::T_INT,
+                    'FKClassName' => 'CRM_Contact_DAO_Contact',
+                ) ,
+                'created_date' => array(
+                    'name' => 'created_date',
+                    'type' => CRM_Utils_Type::T_DATE + CRM_Utils_Type::T_TIME,
+                    'title' => ts('Contribution Page Created Date') ,
                 ) ,
             );
         }
@@ -549,7 +578,7 @@ class CRM_Contribute_DAO_ContributionPage extends CRM_Core_DAO
      * @access public
      * @return string
      */
-    function getTableName() 
+    function getTableName()
     {
         global $dbLocale;
         return self::$_tableName . $dbLocale;
@@ -560,7 +589,7 @@ class CRM_Contribute_DAO_ContributionPage extends CRM_Core_DAO
      * @access public
      * @return boolean
      */
-    function getLog() 
+    function getLog()
     {
         return self::$_log;
     }
@@ -570,17 +599,17 @@ class CRM_Contribute_DAO_ContributionPage extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &import($prefix = false) 
+    function &import($prefix = false)
     {
         if (!(self::$_import)) {
             self::$_import = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('import', $field)) {
                     if ($prefix) {
-                        self::$_import['contribution_page'] = &$fields[$name];
+                        self::$_import['contribution_page'] = & $fields[$name];
                     } else {
-                        self::$_import[$name] = &$fields[$name];
+                        self::$_import[$name] = & $fields[$name];
                     }
                 }
             }
@@ -593,17 +622,17 @@ class CRM_Contribute_DAO_ContributionPage extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &export($prefix = false) 
+    function &export($prefix = false)
     {
         if (!(self::$_export)) {
             self::$_export = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('export', $field)) {
                     if ($prefix) {
-                        self::$_export['contribution_page'] = &$fields[$name];
+                        self::$_export['contribution_page'] = & $fields[$name];
                     } else {
-                        self::$_export[$name] = &$fields[$name];
+                        self::$_export[$name] = & $fields[$name];
                     }
                 }
             }

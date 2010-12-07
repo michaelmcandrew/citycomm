@@ -12,7 +12,7 @@
  *
  * @package CRM
  * @author Marshal Newrock <marshal@idealso.com>
- * $Id: Dummy.php 20543 2009-04-03 18:00:41Z lobo $
+ * $Id: Dummy.php 24552 2009-10-27 08:46:17Z shot $
  */
 
 /* NOTE:
@@ -38,8 +38,9 @@ class CRM_Core_Payment_Dummy extends CRM_Core_Payment {
      * @return void
      */
     function __construct( $mode, &$paymentProcessor ) {
-        $this->_mode = $mode;
+        $this->_mode             = $mode;
         $this->_paymentProcessor = $paymentProcessor;
+        $this->_processorName    = ts('Dummy Processor');
     }
 
     /**
@@ -50,6 +51,18 @@ class CRM_Core_Payment_Dummy extends CRM_Core_Payment {
      * @public
      */
     function doDirectPayment ( &$params ) {
+        // Invoke hook_civicrm_paymentProcessor
+        // In Dummy's case, there is no translation of parameters into
+        // the back-end's canonical set of parameters.  But if a processor
+        // does this, it needs to invoke this hook after it has done translation,
+        // but before it actually starts talking to its proprietary back-end.
+        
+        $cookedParams = $params; // no translation in Dummy processor
+        CRM_Utils_Hook::alterPaymentProcessorParams( $this,
+                                                     $params,
+                                                     $cookedParams );
+        //end of hook invokation
+
         if ( $this->_mode == 'test' ) {
             $query = "SELECT MAX(trxn_id) FROM civicrm_contribution WHERE trxn_id LIKE 'test\\_%'";
             $p = array( );

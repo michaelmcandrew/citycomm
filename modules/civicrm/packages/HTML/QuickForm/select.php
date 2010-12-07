@@ -17,9 +17,9 @@
  * @author      Adam Daniel <adaniel1@eesus.jnj.com>
  * @author      Bertrand Mansion <bmansion@mamasam.com>
  * @author      Alexey Borzov <avb@php.net>
- * @copyright   2001-2007 The PHP Group
+ * @copyright   2001-2009 The PHP Group
  * @license     http://www.php.net/license/3_01.txt PHP License 3.01
- * @version     CVS: $Id: select.php,v 1.33 2007/06/03 15:01:00 avb Exp $
+ * @version     CVS: $Id: select.php,v 1.34 2009/04/04 21:34:04 avb Exp $
  * @link        http://pear.php.net/package/HTML_QuickForm
  */
 
@@ -36,7 +36,7 @@ require_once 'HTML/QuickForm/element.php';
  * @author      Adam Daniel <adaniel1@eesus.jnj.com>
  * @author      Bertrand Mansion <bmansion@mamasam.com>
  * @author      Alexey Borzov <avb@php.net>
- * @version     Release: 3.2.10
+ * @version     Release: 3.2.11
  * @since       1.0
  */
 class HTML_QuickForm_select extends HTML_QuickForm_element {
@@ -521,10 +521,12 @@ class HTML_QuickForm_select extends HTML_QuickForm_element {
         $value = array();
         if (is_array($this->_values)) {
             foreach ($this->_values as $key => $val) {
-                foreach ($this->_options as $oKey => $oVal ) {
-                    if (0 == strcmp($val, $this->_options[$oKey]['attr']['value'])) {
-                        $value[$key] = $oVal['text'];
-                        break;
+                if ( $val || is_numeric($val) ) {
+                    foreach ($this->_options as $oKey => $oVal ) {
+                        if (0 == strcmp($val, $this->_options[$oKey]['attr']['value'])) {
+                            $value[$key] = $oVal['text'];
+                            break;
+                        }
                     }
                 }
             }

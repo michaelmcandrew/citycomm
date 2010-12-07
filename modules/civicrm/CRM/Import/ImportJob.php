@@ -2,9 +2,9 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -62,11 +63,15 @@ class CRM_Import_ImportJob {
     protected $_mapperKeys;
     protected $_mapperLocTypes;
     protected $_mapperPhoneTypes;
+    protected $_mapperImProviders;
+    protected $_mapperWebsiteTypes;
     protected $_mapperRelated;
     protected $_mapperRelatedContactType;
     protected $_mapperRelatedContactDetails;
     protected $_mapperRelatedContactLocType;
     protected $_mapperRelatedContactPhoneType;
+    protected $_mapperRelatedContactImProvider;
+    protected $_mapperRelatedContactWebsiteType;
     protected $_mapFields;
     
     protected $_parser;
@@ -94,14 +99,21 @@ class CRM_Import_ImportJob {
         
         $this->_tableName = $tableName;
         
-        $this->_mapperKeys = array();
-        $this->_mapperLocTypes = array();
-        $this->_mapperPhoneTypes = array();
-        $this->_mapperRelated = array();
-        $this->_mapperRelatedContactType = array();
-        $this->_mapperRelatedContactDetails = array();
-        $this->_mapperRelatedContactLocType = array();
-        $this->_mapperRelatedContactPhoneType = array();
+        //initialize the properties.
+        $properties = array( 'mapperKeys', 
+                             'mapperRelated', 
+                             'mapperLocTypes', 
+                             'mapperPhoneTypes', 
+                             'mapperImProviders', 
+                             'mapperWebsiteTypes', 
+                             'mapperRelatedContactType', 
+                             'mapperRelatedContactDetails', 
+                             'mapperRelatedContactLocType', 
+                             'mapperRelatedContactPhoneType', 
+                             'mapperRelatedContactImProvider',
+                             'mapperRelatedContactWebsiteType' );
+        foreach ( $properties as $property ) $this->{"_$property"} = array( ); 
+        
     }
     
     public function getTableName() {
@@ -133,37 +145,96 @@ class CRM_Import_ImportJob {
     }
     
     public function runImport(&$form, $timeout = 55) {
-        $mapper = $this->_mapper;
-        foreach ($mapper as $key => $value) {
-            $this->_mapperKeys[$key] = $mapper[$key][0];
-            if (is_numeric($mapper[$key][1])) {
-                $this->_mapperLocTypes[$key] = $mapper[$key][1];
-            } else {
-                $this->_mapperLocTypes[$key] = null;
+        $mapper         = $this->_mapper;
+        $mapperFields   = array( );
+        $phoneTypes     = CRM_Core_PseudoConstant::phoneType();
+        $imProviders    = CRM_Core_PseudoConstant::IMProvider();
+        $websiteTypes   = CRM_Core_PseudoConstant::websiteType();
+        $locationTypes  = CRM_Core_PseudoConstant::locationType();
+        
+        //initialize mapper perperty value.
+        $mapperPeroperties = array( 'mapperRelated'                  => 'mapperRelatedVal', 
+                                    'mapperLocTypes'                 => 'mapperLocTypesVal', 
+                                    'mapperPhoneTypes'               => 'mapperPhoneTypesVal', 
+                                    'mapperImProviders'              => 'mapperImProvidersVal', 
+                                    'mapperWebsiteTypes'             => 'mapperWebsiteTypesVal', 
+                                    'mapperRelatedContactType'       => 'mapperRelatedContactTypeVal', 
+                                    'mapperRelatedContactDetails'    => 'mapperRelatedContactDetailsVal', 
+                                    'mapperRelatedContactLocType'    => 'mapperRelatedContactLocTypeVal', 
+                                    'mapperRelatedContactPhoneType'  => 'mapperRelatedContactPhoneTypeVal', 
+                                    'mapperRelatedContactImProvider' => 'mapperRelatedContactImProviderVal',
+                                    'mapperRelatedContactWebsiteType'=> 'mapperRelatedContactWebsiteTypeVal' );
+        
+        foreach ( $mapper as $key => $value ) {
+            //set respective mapper value to null.
+            foreach ( array_values( $mapperPeroperties ) as $perpertyVal ) $$perpertyVal = null;  
+            
+            $header   = array( $this->_mapFields[$fldName] );
+            $fldName  = CRM_Utils_Array::value( 0, $mapper[$key] );
+            $selOne   = CRM_Utils_Array::value( 1, $mapper[$key] );
+            $selTwo   = CRM_Utils_Array::value( 2, $mapper[$key] );
+            $selThree = CRM_Utils_Array::value( 3, $mapper[$key] );
+            $this->_mapperKeys[$key] = $fldName;
+            
+            //need to differentiate non location elements.
+            if ( $selOne && is_numeric( $selOne ) ) {
+                if ( $fldName == 'url' ) {
+                    $header[] = $websiteTypes[$selOne]; 
+                    $mapperWebsiteTypesVal = $selOne;
+                } else {
+                    $header[] = $locationTypes[$selOne];
+                    $mapperLocTypesVal = $selOne;
+                    if ( $selTwo && is_numeric( $selTwo ) ) {
+                        if ( $fldName == 'phone' ) {
+                            $header[] = $phoneTypes[$selTwo];
+                            $mapperPhoneTypesVal = $selTwo;
+                        } else if ( $fldName == 'im' ) {
+                            $header[] = $imProviders[$selTwo];
+                            $mapperImProvidersVal = $selTwo;
+                        }
+                    }
+                }
             }
             
-            if ( is_numeric($mapper[$key][2] ) ) {
-                $this->_mapperPhoneTypes[$key] = $mapper[$key][2];
-            } else {
-                $this->_mapperPhoneTypes[$key] = null;
-            }
-
-            list($id, $first, $second) = explode('_', $mapper[$key][0]);
-            if ( ($first == 'a' && $second == 'b') || ($first == 'b' && $second == 'a') ) {
-                $relationType =& new CRM_Contact_DAO_RelationshipType();
+            list( $id, $first, $second ) = explode( '_', $fldName, 3 );
+            if ( ($first == 'a' && $second == 'b') ||
+                 ($first == 'b' && $second == 'a') ) {
+                
+                $header[] = ucwords(str_replace("_", " ", $selOne ) );
+                
+                $relationType = new CRM_Contact_DAO_RelationshipType();
                 $relationType->id = $id;
                 $relationType->find(true);
-                eval( '$this->_mapperRelatedContactType[$key] = $relationType->contact_type_'.$second.';');
-                $this->_mapperRelated[$key] = $mapper[$key][0];
-                $this->_mapperRelatedContactDetails[$key] = $mapper[$key][1];
-                $this->_mapperRelatedContactLocType[$key] = $mapper[$key][2];
-                $this->_mapperRelatedContactPhoneType[$key] = $mapper[$key][3];
-            } else {
-                $this->_mapperRelated[$key] = null;
-                $this->_mapperRelatedContactType[$key] = null;
-                $this->_mapperRelatedContactDetails[$key] = null;
-                $this->_mapperRelatedContactLocType[$key] = null;
-                $this->_mapperRelatedContactPhoneType[$key] = null;
+                $mapperRelatedContactTypeVal = $relationType->{"contact_type_$second"};
+                
+                $mapperRelatedVal = $fldName;
+                if ( $selOne ) {
+                    $mapperRelatedContactDetailsVal = $selOne;
+                    if ( $selTwo ) {
+                        if ( $selOne == 'url' ) {
+                            $header[] = $websiteTypes[$selTwo];
+                            $mapperRelatedContactWebsiteTypeVal = $selTwo;
+                        } else {
+                            $header[] = $locationTypes[$selTwo];
+                            $mapperRelatedContactLocTypeVal = $selTwo;
+                            if ( $selThree ) {
+                                if ( $selOne == 'phone' ) {
+                                    $header[] = $phoneTypes[$selThree];
+                                    $mapperRelatedContactPhoneTypeVal = $selThree;
+                                } else if ( $selOne == 'im' ) {
+                                    $header[] = $imProviders[$selThree];
+                                    $mapperRelatedContactImProviderVal = $selThree;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            $mapperFields[] = implode(' - ', $header);
+            
+            //set the respective mapper param array values.
+            foreach ( $mapperPeroperties as $mapperProKey => $mapperProVal ) {
+                $this->{"_$mapperProKey"}[$key] = $$mapperProVal;
             }
         }
         
@@ -172,46 +243,15 @@ class CRM_Import_ImportJob {
             $this->_mapperKeys, 
             $this->_mapperLocTypes,
             $this->_mapperPhoneTypes,
+            $this->_mapperImProviders,
             $this->_mapperRelated, 
             $this->_mapperRelatedContactType,
             $this->_mapperRelatedContactDetails,
             $this->_mapperRelatedContactLocType, 
-            $this->_mapperRelatedContactPhoneType );
-                                                  
-        $locationTypes  = CRM_Core_PseudoConstant::locationType();
-        $phoneTypes = CRM_Core_SelectValues::phoneType();
-        
-        foreach ($mapper as $key => $value) {
-            $header = array();
-            list($id, $first, $second) = explode('_', $mapper[$key][0]);
-            if ( ($first == 'a' && $second == 'b') || ($first == 'b' && $second == 'a') ) {
-                $relationType =& new CRM_Contact_DAO_RelationshipType();
-                $relationType->id = $id;
-                $relationType->find(true);
-                
-                $header[] = $relationType->name_a_b;
-                $header[] = ucwords(str_replace("_", " ", $mapper[$key][1]));
-                
-                if ( isset($mapper[$key][2]) ) {
-                    $header[] = $locationTypes[$mapper[$key][2]];
-                }
-                if ( isset($mapper[$key][3]) ) {
-                    $header[] = $phoneTypes[$mapper[$key][3]];
-                }
-                
-            } else {
-                if ( isset($this->_mapFields[$mapper[$key][0]]) ) {
-                    $header[] = $this->_mapFields[$mapper[$key][0]];
-                    if ( isset($mapper[$key][1]) ) {
-                        $header[] = $locationTypes[$mapper[$key][1]];
-                    }
-                    if ( isset($mapper[$key][2]) ) {
-                        $header[] = $phoneTypes[$mapper[$key][2]];
-                    }
-                }
-            }            
-            $mapperFields[] = implode(' - ', $header);
-        }
+            $this->_mapperRelatedContactPhoneType, 
+            $this->_mapperRelatedContactImProvider,
+            $this->_mapperWebsiteTypes,
+            $this->_mapperRelatedContactWebsiteType );
         
         $this->_parser->run( $this->_tableName, $mapperFields,
                       CRM_Import_Parser::MODE_IMPORT,
@@ -221,7 +261,9 @@ class CRM_Import_ImportJob {
                       $this->_onDuplicate,
                       $this->_statusID,
                       $this->_totalRowCount,
-                      $this->_doGeocodeAddress );
+                      $this->_doGeocodeAddress,
+                      CRM_Import_Parser::DEFAULT_TIMEOUT, 
+                      $this->_contactSubType );
                       
         $contactIds = $this->_parser->getImportedContacts( );
         
@@ -254,14 +296,13 @@ class CRM_Import_ImportJob {
     }
     
     private function _addImportedContactsToNewGroup( $contactIds,
-        $newGroupName, $newGroupDesc ) {
+                                                     $newGroupName, $newGroupDesc ) {
         
         $newGroupId = null;
         
         if ($newGroupName) {
             /* Create a new group */
             $gParams = array(
-                             'name'          => $newGroupName,
                              'title'         => $newGroupName,
                              'description'   => $newGroupDesc,
                              'is_active'     => true,
@@ -306,7 +347,8 @@ class CRM_Import_ImportJob {
                                'name'          => $newTagName,
                                'title'         => $newTagName,
                                'description'   => $newTagDesc,
-                               'is_active'     => true,
+                               'is_selectable' => true,
+                               'used_for'      => 'civicrm_contact' 
                                );
             require_once 'CRM/Core/BAO/Tag.php';
             $id = array();
@@ -320,7 +362,7 @@ class CRM_Import_ImportJob {
             $tagAdditions = array();
             require_once "CRM/Core/BAO/EntityTag.php";
             foreach ($this->_tag as $tagId =>$val) {
-                $addTagCount = CRM_Core_BAO_EntityTag::addContactsToTag( $contactIds, $tagId );
+                $addTagCount = CRM_Core_BAO_EntityTag::addEntitiesToTag( $contactIds, $tagId );
                 $totalTagCount = $addTagCount[1];
                 if ($tagId == $addedTag->id) {
                     $tagName = $newTagName;

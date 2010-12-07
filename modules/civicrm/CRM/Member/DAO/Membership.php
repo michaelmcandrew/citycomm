@@ -1,15 +1,15 @@
 <?php
 /*
 +--------------------------------------------------------------------+
-| CiviCRM version 2.2                                                |
+| CiviCRM version 3.2                                                |
 +--------------------------------------------------------------------+
-| Copyright CiviCRM LLC (c) 2004-2009                                |
+| Copyright CiviCRM LLC (c) 2004-2010                                |
 +--------------------------------------------------------------------+
 | This file is a part of CiviCRM.                                    |
 |                                                                    |
 | CiviCRM is free software; you can copy, modify, and distribute it  |
 | under the terms of the GNU Affero General Public License           |
-| Version 3, 19 November 2007.                                       |
+| Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
 |                                                                    |
 | CiviCRM is distributed in the hope that it will be useful, but     |
 | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
 | See the GNU Affero General Public License for more details.        |
 |                                                                    |
 | You should have received a copy of the GNU Affero General Public   |
-| License along with this program; if not, contact CiviCRM LLC       |
+| License and the CiviCRM Licensing Exception along                  |
+| with this program; if not, contact CiviCRM LLC                     |
 | at info[AT]civicrm[DOT]org. If you have questions about the        |
 | GNU Affero General Public License or the licensing of CiviCRM,     |
 | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -26,7 +27,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -160,7 +161,7 @@ class CRM_Member_DAO_Membership extends CRM_Core_DAO
      * @access public
      * @return civicrm_membership
      */
-    function __construct() 
+    function __construct()
     {
         parent::__construct();
     }
@@ -170,7 +171,7 @@ class CRM_Member_DAO_Membership extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &links() 
+    function &links()
     {
         if (!(self::$_links)) {
             self::$_links = array(
@@ -188,7 +189,7 @@ class CRM_Member_DAO_Membership extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &fields() 
+    function &fields()
     {
         if (!(self::$_fields)) {
             self::$_fields = array(
@@ -213,17 +214,19 @@ class CRM_Member_DAO_Membership extends CRM_Core_DAO
                     'headerPattern' => '/contact(.?id)?/i',
                     'dataPattern' => '/^\d+$/',
                     'export' => true,
+                    'FKClassName' => 'CRM_Contact_DAO_Contact',
                 ) ,
                 'membership_type_id' => array(
                     'name' => 'membership_type_id',
                     'type' => CRM_Utils_Type::T_INT,
-                    'title' => ts('Membership Type') ,
+                    'title' => ts('Membership Type Id') ,
                     'required' => true,
                     'import' => true,
                     'where' => 'civicrm_membership.membership_type_id',
                     'headerPattern' => '/^(m(embership\s)?type)$/i',
                     'dataPattern' => '',
-                    'export' => true,
+                    'export' => false,
+                    'FKClassName' => 'CRM_Member_DAO_MembershipType',
                 ) ,
                 'join_date' => array(
                     'name' => 'join_date',
@@ -270,13 +273,14 @@ class CRM_Member_DAO_Membership extends CRM_Core_DAO
                 'status_id' => array(
                     'name' => 'status_id',
                     'type' => CRM_Utils_Type::T_INT,
-                    'title' => ts('Membership Status') ,
+                    'title' => ts('Membership Status Id') ,
                     'required' => true,
                     'import' => true,
                     'where' => 'civicrm_membership.status_id',
                     'headerPattern' => '/(member(ship|).)?(status)$/i',
                     'dataPattern' => '',
-                    'export' => true,
+                    'export' => false,
+                    'FKClassName' => 'CRM_Member_DAO_MembershipStatus',
                 ) ,
                 'is_override' => array(
                     'name' => 'is_override',
@@ -296,6 +300,12 @@ class CRM_Member_DAO_Membership extends CRM_Core_DAO
                 'owner_membership_id' => array(
                     'name' => 'owner_membership_id',
                     'type' => CRM_Utils_Type::T_INT,
+                    'title' => ts('Primary Member ID') ,
+                    'export' => true,
+                    'where' => 'civicrm_membership.owner_membership_id',
+                    'headerPattern' => '',
+                    'dataPattern' => '',
+                    'FKClassName' => 'CRM_Member_DAO_Membership',
                 ) ,
                 'member_is_test' => array(
                     'name' => 'is_test',
@@ -327,7 +337,7 @@ class CRM_Member_DAO_Membership extends CRM_Core_DAO
      * @access public
      * @return string
      */
-    function getTableName() 
+    function getTableName()
     {
         return self::$_tableName;
     }
@@ -337,7 +347,7 @@ class CRM_Member_DAO_Membership extends CRM_Core_DAO
      * @access public
      * @return boolean
      */
-    function getLog() 
+    function getLog()
     {
         return self::$_log;
     }
@@ -347,17 +357,17 @@ class CRM_Member_DAO_Membership extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &import($prefix = false) 
+    function &import($prefix = false)
     {
         if (!(self::$_import)) {
             self::$_import = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('import', $field)) {
                     if ($prefix) {
-                        self::$_import['membership'] = &$fields[$name];
+                        self::$_import['membership'] = & $fields[$name];
                     } else {
-                        self::$_import[$name] = &$fields[$name];
+                        self::$_import[$name] = & $fields[$name];
                     }
                 }
             }
@@ -370,17 +380,17 @@ class CRM_Member_DAO_Membership extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &export($prefix = false) 
+    function &export($prefix = false)
     {
         if (!(self::$_export)) {
             self::$_export = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('export', $field)) {
                     if ($prefix) {
-                        self::$_export['membership'] = &$fields[$name];
+                        self::$_export['membership'] = & $fields[$name];
                     } else {
-                        self::$_export[$name] = &$fields[$name];
+                        self::$_export[$name] = & $fields[$name];
                     }
                 }
             }

@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -26,15 +27,13 @@
 */
 
 /**
+ * File for the CiviCRM APIv2 membership functions
  *
- * Definition of CRM API for Membership.
- * More detailed documentation can be found 
- * {@link http://objectledge.org/confluence/display/CRM/CRM+v1.0+Public+APIs
- * here}
+ * @package CiviCRM_APIv2
+ * @subpackage API_Membership
  *
- * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
- * $Id$
+ * @copyright CiviCRM LLC (c) 2004-2010
+ * @version $Id: Membership.php 28934 2010-07-28 18:44:12Z mover $
  *
  */
 
@@ -62,7 +61,7 @@ function civicrm_membership_delete(&$membershipID)
     _civicrm_initialize();
     
     if (empty($membershipID)) {
-        return civicrm_create_error('Invalid value for membershipID');
+        return civicrm_create_error('Membership ID cannot be empty.');
     }
     
     require_once 'CRM/Member/BAO/Membership.php';
@@ -74,21 +73,41 @@ function civicrm_membership_delete(&$membershipID)
     return $result ? civicrm_create_success( ) : civicrm_create_error('Error while deleting Membership');
 }
 
-# Deprecated compatilibility wrappers
+/**
+ *
+ * @param <type> $contactID
+ * @return <type>
+ * @deprecated compatilibility wrappers
+ */
 function civicrm_contact_memberships_get(&$contactID)
 {
     return civicrm_membership_contact_get($contactID);
 }
 
+/**
+ *
+ * @param <type> $params
+ * @return <type>
+ */
 function civicrm_contact_membership_create(&$params)
 {
     return civicrm_membership_contact_create($params);
 }
 
+/**
+ *
+ * @param <type> $params
+ * @return <type>
+ */
 function civicrm_membership_types_get(&$params) {
     return civicrm_membership_type_get($params);
 }
 
+/**
+ *
+ * @param <type> $params
+ * @return <type> 
+ */
 function civicrm_membership_statuses_get(&$params) {
     return civicrm_membership_status_get($params);
 }

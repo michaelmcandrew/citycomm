@@ -1,15 +1,15 @@
 <?php
 /*
 +--------------------------------------------------------------------+
-| CiviCRM version 2.2                                                |
+| CiviCRM version 3.2                                                |
 +--------------------------------------------------------------------+
-| Copyright CiviCRM LLC (c) 2004-2009                                |
+| Copyright CiviCRM LLC (c) 2004-2010                                |
 +--------------------------------------------------------------------+
 | This file is a part of CiviCRM.                                    |
 |                                                                    |
 | CiviCRM is free software; you can copy, modify, and distribute it  |
 | under the terms of the GNU Affero General Public License           |
-| Version 3, 19 November 2007.                                       |
+| Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
 |                                                                    |
 | CiviCRM is distributed in the hope that it will be useful, but     |
 | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
 | See the GNU Affero General Public License for more details.        |
 |                                                                    |
 | You should have received a copy of the GNU Affero General Public   |
-| License along with this program; if not, contact CiviCRM LLC       |
+| License and the CiviCRM Licensing Exception along                  |
+| with this program; if not, contact CiviCRM LLC                     |
 | at info[AT]civicrm[DOT]org. If you have questions about the        |
 | GNU Affero General Public License or the licensing of CiviCRM,     |
 | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -26,7 +27,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -299,7 +300,7 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
      *
      * @var int unsigned
      */
-    public $default_discount_id;
+    public $default_discount_fee_id;
     /**
      * Title for ThankYou page.
      *
@@ -349,12 +350,66 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
      */
     public $allow_same_participant_emails;
     /**
+     * Whether the event has waitlist support.
+     *
+     * @var boolean
+     */
+    public $has_waitlist;
+    /**
+     * Whether participants require approval before they can finish registering.
+     *
+     * @var boolean
+     */
+    public $requires_approval;
+    /**
+     * Expire pending but unconfirmed registrations after this many hours.
+     *
+     * @var int unsigned
+     */
+    public $expiration_time;
+    /**
+     * Text to display when the event is full, but participants can signup for a waitlist.
+     *
+     * @var text
+     */
+    public $waitlist_text;
+    /**
+     * Text to display when the approval is required to complete registration for an event.
+     *
+     * @var text
+     */
+    public $approval_req_text;
+    /**
+     * whether the event has template
+     *
+     * @var boolean
+     */
+    public $is_template;
+    /**
+     * Event Template Title
+     *
+     * @var string
+     */
+    public $template_title;
+    /**
+     * FK to civicrm_contact, who created this event
+     *
+     * @var int unsigned
+     */
+    public $created_id;
+    /**
+     * Date and time that event was created.
+     *
+     * @var datetime
+     */
+    public $created_date;
+    /**
      * class constructor
      *
      * @access public
      * @return civicrm_event
      */
-    function __construct() 
+    function __construct()
     {
         parent::__construct();
     }
@@ -364,12 +419,13 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &links() 
+    function &links()
     {
         if (!(self::$_links)) {
             self::$_links = array(
                 'payment_processor_id' => 'civicrm_payment_processor:id',
                 'loc_block_id' => 'civicrm_loc_block:id',
+                'created_id' => 'civicrm_contact:id',
             );
         }
         return self::$_links;
@@ -380,7 +436,7 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &fields() 
+    function &fields()
     {
         if (!(self::$_fields)) {
             self::$_fields = array(
@@ -429,10 +485,11 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
                     'name' => 'is_public',
                     'type' => CRM_Utils_Type::T_BOOLEAN,
                     'title' => ts('Is Event Public') ,
+                    'default' => '',
                 ) ,
                 'event_start_date' => array(
                     'name' => 'start_date',
-                    'type' => CRM_Utils_Type::T_DATE+CRM_Utils_Type::T_TIME,
+                    'type' => CRM_Utils_Type::T_DATE + CRM_Utils_Type::T_TIME,
                     'title' => ts('Event Start Date') ,
                     'import' => true,
                     'where' => 'civicrm_event.start_date',
@@ -442,7 +499,7 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
                 ) ,
                 'event_end_date' => array(
                     'name' => 'end_date',
-                    'type' => CRM_Utils_Type::T_DATE+CRM_Utils_Type::T_TIME,
+                    'type' => CRM_Utils_Type::T_DATE + CRM_Utils_Type::T_TIME,
                     'title' => ts('Event End Date') ,
                     'import' => true,
                     'where' => 'civicrm_event.end_date',
@@ -464,18 +521,19 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
                 ) ,
                 'registration_start_date' => array(
                     'name' => 'registration_start_date',
-                    'type' => CRM_Utils_Type::T_DATE+CRM_Utils_Type::T_TIME,
+                    'type' => CRM_Utils_Type::T_DATE + CRM_Utils_Type::T_TIME,
                     'title' => ts('Registration Start Date') ,
                 ) ,
                 'registration_end_date' => array(
                     'name' => 'registration_end_date',
-                    'type' => CRM_Utils_Type::T_DATE+CRM_Utils_Type::T_TIME,
+                    'type' => CRM_Utils_Type::T_DATE + CRM_Utils_Type::T_TIME,
                     'title' => ts('Registration End Date') ,
                 ) ,
                 'max_participants' => array(
                     'name' => 'max_participants',
                     'type' => CRM_Utils_Type::T_INT,
                     'title' => ts('Max Participants') ,
+                    'default' => 'UL',
                 ) ,
                 'event_full_text' => array(
                     'name' => 'event_full_text',
@@ -495,6 +553,7 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
                 'payment_processor_id' => array(
                     'name' => 'payment_processor_id',
                     'type' => CRM_Utils_Type::T_INT,
+                    'FKClassName' => 'CRM_Core_DAO_PaymentProcessor',
                 ) ,
                 'is_map' => array(
                     'name' => 'is_map',
@@ -520,10 +579,12 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
                     'name' => 'is_show_location',
                     'type' => CRM_Utils_Type::T_BOOLEAN,
                     'title' => ts('show location') ,
+                    'default' => '',
                 ) ,
                 'loc_block_id' => array(
                     'name' => 'loc_block_id',
                     'type' => CRM_Utils_Type::T_INT,
+                    'FKClassName' => 'CRM_Core_DAO_LocBlock',
                 ) ,
                 'default_role_id' => array(
                     'name' => 'default_role_id',
@@ -534,6 +595,7 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
                     'headerPattern' => '',
                     'dataPattern' => '',
                     'export' => true,
+                    'default' => '',
                 ) ,
                 'intro_text' => array(
                     'name' => 'intro_text',
@@ -555,6 +617,7 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
                     'title' => ts('Confirmation Title') ,
                     'maxlength' => 255,
                     'size' => CRM_Utils_Type::HUGE,
+                    'default' => 'UL',
                 ) ,
                 'confirm_text' => array(
                     'name' => 'confirm_text',
@@ -614,8 +677,8 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
                     'name' => 'default_fee_id',
                     'type' => CRM_Utils_Type::T_INT,
                 ) ,
-                'default_discount_id' => array(
-                    'name' => 'default_discount_id',
+                'default_discount_fee_id' => array(
+                    'name' => 'default_discount_fee_id',
                     'type' => CRM_Utils_Type::T_INT,
                 ) ,
                 'thankyou_title' => array(
@@ -624,6 +687,7 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
                     'title' => ts('ThankYou Title') ,
                     'maxlength' => 255,
                     'size' => CRM_Utils_Type::HUGE,
+                    'default' => 'UL',
                 ) ,
                 'thankyou_text' => array(
                     'name' => 'thankyou_text',
@@ -662,6 +726,61 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
                     'type' => CRM_Utils_Type::T_BOOLEAN,
                     'title' => ts('Does Event allow multiple registrations from same email address?') ,
                 ) ,
+                'has_waitlist' => array(
+                    'name' => 'has_waitlist',
+                    'type' => CRM_Utils_Type::T_BOOLEAN,
+                    'title' => ts('Has Waitlist') ,
+                ) ,
+                'requires_approval' => array(
+                    'name' => 'requires_approval',
+                    'type' => CRM_Utils_Type::T_BOOLEAN,
+                    'title' => ts('Requires Approval') ,
+                ) ,
+                'expiration_time' => array(
+                    'name' => 'expiration_time',
+                    'type' => CRM_Utils_Type::T_INT,
+                    'title' => ts('Expiration Time') ,
+                ) ,
+                'waitlist_text' => array(
+                    'name' => 'waitlist_text',
+                    'type' => CRM_Utils_Type::T_TEXT,
+                    'title' => ts('Waitlist Text') ,
+                    'rows' => 4,
+                    'cols' => 60,
+                ) ,
+                'approval_req_text' => array(
+                    'name' => 'approval_req_text',
+                    'type' => CRM_Utils_Type::T_TEXT,
+                    'title' => ts('Approval Req Text') ,
+                    'rows' => 4,
+                    'cols' => 60,
+                ) ,
+                'is_template' => array(
+                    'name' => 'is_template',
+                    'type' => CRM_Utils_Type::T_BOOLEAN,
+                ) ,
+                'template_title' => array(
+                    'name' => 'template_title',
+                    'type' => CRM_Utils_Type::T_STRING,
+                    'title' => ts('Event Template Title') ,
+                    'maxlength' => 255,
+                    'size' => CRM_Utils_Type::HUGE,
+                    'import' => true,
+                    'where' => 'civicrm_event.template_title',
+                    'headerPattern' => '/(template.)?title$/i',
+                    'dataPattern' => '',
+                    'export' => true,
+                ) ,
+                'created_id' => array(
+                    'name' => 'created_id',
+                    'type' => CRM_Utils_Type::T_INT,
+                    'FKClassName' => 'CRM_Contact_DAO_Contact',
+                ) ,
+                'created_date' => array(
+                    'name' => 'created_date',
+                    'type' => CRM_Utils_Type::T_DATE + CRM_Utils_Type::T_TIME,
+                    'title' => ts('Event Created Date') ,
+                ) ,
             );
         }
         return self::$_fields;
@@ -672,7 +791,7 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
      * @access public
      * @return string
      */
-    function getTableName() 
+    function getTableName()
     {
         global $dbLocale;
         return self::$_tableName . $dbLocale;
@@ -683,7 +802,7 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
      * @access public
      * @return boolean
      */
-    function getLog() 
+    function getLog()
     {
         return self::$_log;
     }
@@ -693,17 +812,17 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &import($prefix = false) 
+    function &import($prefix = false)
     {
         if (!(self::$_import)) {
             self::$_import = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('import', $field)) {
                     if ($prefix) {
-                        self::$_import['event'] = &$fields[$name];
+                        self::$_import['event'] = & $fields[$name];
                     } else {
-                        self::$_import[$name] = &$fields[$name];
+                        self::$_import[$name] = & $fields[$name];
                     }
                 }
             }
@@ -716,17 +835,17 @@ class CRM_Event_DAO_Event extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &export($prefix = false) 
+    function &export($prefix = false)
     {
         if (!(self::$_export)) {
             self::$_export = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('export', $field)) {
                     if ($prefix) {
-                        self::$_export['event'] = &$fields[$name];
+                        self::$_export['event'] = & $fields[$name];
                     } else {
-                        self::$_export[$name] = &$fields[$name];
+                        self::$_export[$name] = & $fields[$name];
                     }
                 }
             }

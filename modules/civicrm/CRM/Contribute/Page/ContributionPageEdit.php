@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -66,7 +67,7 @@ class CRM_Contribute_Page_ContributionPageEdit extends CRM_Core_Page {
         $action = CRM_Utils_Request::retrieve('action', 'String',
                                               $this, false, 'browse'); // default to 'browse'
         
-        $config =& CRM_Core_Config::singleton( );
+        $config = CRM_Core_Config::singleton( );
         if ( in_array("CiviMember", $config->enableComponents) ) {
             $this->assign('CiviMember', true );
         }
@@ -78,7 +79,7 @@ class CRM_Contribute_Page_ContributionPageEdit extends CRM_Core_Page {
                                                  $this, false, 0);
         
         if ( ! $this->_id ) {
-            $dao =& new CRM_Contribute_DAO_ContributionPage( ); 
+            $dao = new CRM_Contribute_DAO_ContributionPage( ); 
             $dao->save( ); 
  
             $this->_id = $dao->id; 
@@ -120,16 +121,16 @@ class CRM_Contribute_Page_ContributionPageEdit extends CRM_Core_Page {
 
         case 'Premium':
             require_once 'CRM/Contribute/Page/Premium.php';
-            $page =& new CRM_Contribute_Page_Premium( 'Configure Premiums' );
-            $session =& CRM_Core_Session::singleton();
+            $page = new CRM_Contribute_Page_Premium( 'Configure Premiums' );
+            $session = CRM_Core_Session::singleton();
             $session->set('singleForm', true);
             return $page->run( );
         }
 
         if ( $form ) {
             require_once 'CRM/Core/Controller/Simple.php'; 
-            $controller =& new CRM_Core_Controller_Simple($form, $subPage, $action); 
-            $session =& CRM_Core_Session::singleton(); 
+            $controller = new CRM_Core_Controller_Simple($form, $subPage, $action); 
+            $session = CRM_Core_Session::singleton(); 
             $session->pushUserContext( CRM_Utils_System::url( CRM_Utils_System::currentPath( ) , 'action=update&reset=1&id=' . $this->_id ) );
             $controller->set('id', $this->_id); 
             $controller->set('single', true );
@@ -153,7 +154,7 @@ class CRM_Contribute_Page_ContributionPageEdit extends CRM_Core_Page {
         
         // get all custom groups sorted by weight
         $donation =  array();
-        $dao      =& new CRM_Contribute_DAO_ContributionPage();
+        $dao      = new CRM_Contribute_DAO_ContributionPage();
 
         $dao->orderBy('title');
         $dao->find();

@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -59,7 +60,7 @@ class CRM_Contribute_Page_DashBoard extends CRM_Core_Page
         $status = array( 'Valid', 'Cancelled' );
         
         $startDate = null;
-        $config =& CRM_Core_Config::singleton( );
+        $config = CRM_Core_Config::singleton( );
         $currentMonth = date('m');
         $currentDay   = date('d');
         if ( (int ) $config->fiscalYearStart['M']  > $currentMonth ||
@@ -74,17 +75,15 @@ class CRM_Contribute_Page_DashBoard extends CRM_Core_Page
         $yearDate = array_merge( $year, $yearDate);
         $yearDate = CRM_Utils_Date::format( $yearDate );
   
-        $monthDate = date('Ym') . '01000000';
+        $monthDate = date('Ym') . '01';
 
         $prefixes = array( 'start', 'month', 'year'  );
         $status   = array( 'Valid', 'Cancelled' );
        
         $yearNow = $yearDate + 10000;
-        $yearNow .= '000000';
-        $yearDate  = $yearDate  . '000000';
         
         // we are specific since we want all information till this second
-        $now       = date( 'YmdHis' );
+        $now       = date( 'Ymd' );
        
         require_once 'CRM/Contribute/BAO/Contribution.php';
         foreach ( $prefixes as $prefix ) {
@@ -102,6 +101,11 @@ class CRM_Contribute_Page_DashBoard extends CRM_Core_Page
             }
             $this->assign( $aName, $$aName );
         }
+        
+        //for contribution tabular View
+        $buildTabularView = CRM_Utils_Array::value( 'showtable', $_GET, false );
+        $this->assign( 'buildTabularView', $buildTabularView );
+        if( $buildTabularView ) return;
         
         // Check for admin permission to see if we should include the Manage Contribution Pages action link
         $isAdmin = 0;
@@ -122,14 +126,21 @@ class CRM_Contribute_Page_DashBoard extends CRM_Core_Page
     function run( ) { 
         $this->preProcess( );
         
-        $controller =& new CRM_Core_Controller_Simple( 'CRM_Contribute_Form_Search', ts('Contributions'), null );
+        $controller = new CRM_Core_Controller_Simple( 'CRM_Contribute_Form_Search', 
+                                                      ts('Contributions'), null );
         $controller->setEmbedded( true ); 
-        $controller->reset( ); 
+        
         $controller->set( 'limit', 10 );
         $controller->set( 'force', 1 );
         $controller->set( 'context', 'dashboard' ); 
         $controller->process( ); 
-        $controller->run( ); 
+        $controller->run( );
+        $chartForm = new CRM_Core_Controller_Simple( 'CRM_Contribute_Form_ContributionCharts', 
+                                                     ts('Contributions Charts'), null );
+        
+        $chartForm->setEmbedded( true );
+        $chartForm->process( );
+        $chartForm->run( );
         
         return parent::run( );
     }

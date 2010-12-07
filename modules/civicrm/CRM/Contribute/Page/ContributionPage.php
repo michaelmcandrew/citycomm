@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -73,9 +74,9 @@ class CRM_Contribute_Page_ContributionPage extends CRM_Core_Page
         // check if variable _actionsLinks is populated
         if (!isset(self::$_actionLinks)) {
             // helper variable for nicer formatting
-            $disableExtra = ts('Are you sure you want to disable this Contribution page?');
             $deleteExtra = ts('Are you sure you want to delete this Contribution page?');
             $copyExtra = ts('Are you sure you want to make a copy of this Contribution page?');
+            
             self::$_actionLinks = array(
                                         CRM_Core_Action::UPDATE  => array(
                                                                           'name'  => ts('Configure'),
@@ -94,18 +95,18 @@ class CRM_Contribute_Page_ContributionPage extends CRM_Core_Page
                                                                           'url'   => 'civicrm/contribute/transact',
                                                                           'qs'    => 'reset=1&id=%%id%%',
                                                                           'title' => ts('FollowUp'),
+                                                                          'fe'    =>'true',
                                                                           ),
                                         CRM_Core_Action::DISABLE => array(
                                                                           'name'  => ts('Disable'),
-                                                                          'url'   => CRM_Utils_System::currentPath( ),
-                                                                          'qs'    => 'action=disable&id=%%id%%',
                                                                           'title' => ts('Disable'),
-                                                                          'extra' => 'onclick = "return confirm(\'' . $disableExtra . '\');"',
+                                                                          'extra' => 'onclick = "enableDisable( %%id%%,\''. 'CRM_Contribute_BAO_ContributionPage' . '\',\'' . 'enable-disable' . '\' );"',
+                                                                          'ref'   => 'disable-action'
                                                                           ),
                                         CRM_Core_Action::ENABLE  => array(
                                                                           'name'  => ts('Enable'),
-                                                                          'url'   => CRM_Utils_System::currentPath( ),
-                                                                          'qs'    => 'action=enable&id=%%id%%',
+                                                                          'extra' => 'onclick = "enableDisable( %%id%%,\''. 'CRM_Contribute_BAO_ContributionPage' . '\',\'' . 'disable-enable' . '\' );"',
+                                                                          'ref'   => 'enable-action',
                                                                           'title' => ts('Enable'),
                                                                           ),
                                         CRM_Core_Action::DELETE  => array(
@@ -156,29 +157,29 @@ class CRM_Contribute_Page_ContributionPage extends CRM_Core_Page
        
         // what action to take ?
         if ( $action & CRM_Core_Action::ADD ) {
-            $session =& CRM_Core_Session::singleton( ); 
+            $session = CRM_Core_Session::singleton( ); 
             $session->pushUserContext( CRM_Utils_System::url( CRM_Utils_System::currentPath( ),
                                                              'action=browse&reset=1' ) );
             require_once 'CRM/Contribute/Controller/ContributionPage.php';
-            $controller =& new CRM_Contribute_Controller_ContributionPage( );
+            $controller = new CRM_Contribute_Controller_ContributionPage( null, $action );
             CRM_Utils_System::setTitle( ts('Manage Contribution Page') );
             CRM_Utils_System::appendBreadCrumb( $breadCrumb );
             return $controller->run( );
         } else if ($action & CRM_Core_Action::UPDATE ) {
             CRM_Utils_System::appendBreadCrumb( $breadCrumb );
-            $session =& CRM_Core_Session::singleton( ); 
+            $session = CRM_Core_Session::singleton( ); 
             $session->pushUserContext( CRM_Utils_System::url( CRM_Utils_System::currentPath( ),
                                                              "action=update&reset=1&id={$id}") );
             require_once 'CRM/Contribute/Page/ContributionPageEdit.php';
-            $page =& new CRM_Contribute_Page_ContributionPageEdit( );
+            $page = new CRM_Contribute_Page_ContributionPageEdit( );
             return $page->run( );
         } else if ($action & CRM_Core_Action::PREVIEW) {
             CRM_Utils_System::appendBreadCrumb( $breadCrumb );
             require_once 'CRM/Contribute/Page/ContributionPageEdit.php';
-            $page =& new CRM_Contribute_Page_ContributionPageEdit( );
+            $page = new CRM_Contribute_Page_ContributionPageEdit( );
             return $page->run( );
         } else if ($action & CRM_Core_Action::COPY) {
-            $session =& CRM_Core_Session::singleton();
+            $session = CRM_Core_Session::singleton();
             CRM_Core_Session::setStatus("A copy of the contribution page has been created" );
             $this->copy( );
         } else if ($action & CRM_Core_Action::DELETE) {
@@ -187,13 +188,13 @@ class CRM_Contribute_Page_ContributionPage extends CRM_Core_Page
                                                     $this );
             if ( $subPage == 'AddProductToPage' ) {
                 require_once 'CRM/Contribute/Page/ContributionPageEdit.php';
-                $page =& new CRM_Contribute_Page_ContributionPageEdit( );
+                $page = new CRM_Contribute_Page_ContributionPageEdit( );
                 return $page->run( );
             } else {
                 CRM_Utils_System::appendBreadCrumb( $breadCrumb );
-                $session =& CRM_Core_Session::singleton();
+                $session = CRM_Core_Session::singleton();
                 $session->pushUserContext( CRM_Utils_System::url( CRM_Utils_System::currentPath( ), 'reset=1&action=browse' ) );
-                $controller =& new CRM_Core_Controller_Simple( 'CRM_Contribute_Form_ContributionPage_Delete',
+                $controller = new CRM_Core_Controller_Simple( 'CRM_Contribute_Form_ContributionPage_Delete',
                                                                'Delete Contribution Page',
                                                                CRM_Core_Action::DELETE );
                 $id = CRM_Utils_Request::retrieve('id', 'Positive',
@@ -212,13 +213,7 @@ WHERE cp.contribution_page_id = {$id}";
             }
         } else {
             require_once 'CRM/Contribute/BAO/ContributionPage.php';
-            // if action is enable or disable to the needful.
-            if ($action & CRM_Core_Action::DISABLE) {
-                CRM_Core_DAO::setFieldValue( 'CRM_Contribute_BAO_ContributionPage', $id, 'is_active', 0);
-            } else if ($action & CRM_Core_Action::ENABLE) {
-                CRM_Core_DAO::setFieldValue( 'CRM_Contribute_BAO_ContributionPage', $id, 'is_active', 1);
-            }
-
+            
             // finally browse the contribution pages
             $this->browse();
             CRM_Utils_System::setTitle( ts('Manage Contribution Pages') );
@@ -257,6 +252,9 @@ WHERE cp.contribution_page_id = {$id}";
         $this->_sortByCharacter = CRM_Utils_Request::retrieve( 'sortByCharacter',
                                                                'String',
                                                                $this );
+        $createdId = CRM_Utils_Request::retrieve('cid', 'Positive',
+                                          $this, false, 0);
+
         if ( $this->_sortByCharacter == 1 ||
              ! empty( $_POST ) ) {
             $this->_sortByCharacter = '';
@@ -273,9 +271,13 @@ WHERE cp.contribution_page_id = {$id}";
         $params      = array( );
         $whereClause = $this->whereClause( $params, true );
         $this->pager( $whereClause, $params );
-       
+        
         list( $offset, $rowCount ) = $this->_pager->getOffsetAndRowCount( );
-
+        
+        //check for delete CRM-4418
+        require_once 'CRM/Core/Permission.php'; 
+        $allowToDelete = CRM_Core_Permission::check( 'delete in CiviContribute' );
+        
         $query = "
 SELECT *
 FROM civicrm_contribution_page
@@ -284,18 +286,22 @@ ORDER BY title asc
    LIMIT $offset, $rowCount";
 
         $dao = CRM_Core_DAO::executeQuery( $query, $params, true, 'CRM_Contribute_DAO_ContributionPage' );
-
+        
         while ($dao->fetch()) {
             $contribution[$dao->id] = array();
             CRM_Core_DAO::storeValues($dao, $contribution[$dao->id]);
             // form all action links
             $action = array_sum(array_keys($this->actionLinks()));
             
-            // update enable/disable links depending on custom_group properties.
-            if ($dao->is_active) {
+            if ( $dao->is_active ) {
                 $action -= CRM_Core_Action::ENABLE;
             } else {
                 $action -= CRM_Core_Action::DISABLE;
+            }   
+            
+            //CRM-4418
+            if ( !$allowToDelete ) {
+                $action -= CRM_Core_Action::DELETE; 
             }
             
             $contribution[$dao->id]['action'] = CRM_Core_Action::formLink(self::actionLinks(), $action, 
@@ -325,6 +331,12 @@ ORDER BY title asc
         $values  =  array( );
         $clauses = array( );
         $title   = $this->get( 'title' );
+        $createdId = $this->get( 'cid' );
+        
+        if( $createdId ) {
+            $clauses[] = "(created_id = {$createdId})";
+        }
+
         if ( $title ) {
             $clauses[] = "title LIKE %1";
             if ( strpos( $title, '%' ) !== false ) {

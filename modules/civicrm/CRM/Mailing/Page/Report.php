@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -94,52 +95,28 @@ class CRM_Mailing_Page_Report extends CRM_Core_Page_Basic {
         if ( count($report['jobs']) > 1 ) {
             CRM_Core_Error::statusBounce(ts('Selected Mailing has more than one live job.'));
         }   
+        //get contents of mailing
+        CRM_Mailing_BAO_Mailing::getMailingContent( $report, $this ); 
         
-        require_once 'CRM/Mailing/BAO/Component.php';
-        if ($report['mailing']['header_id']) { 
-            $header = new CRM_Mailing_BAO_Component();
-            $header->id = $report['mailing']['header_id'];
-            $header->find(true);
-            $htmlHeader = $header->body_html;
-            $textHeader = $header->body_text;
+        //assign backurl
+        $context = CRM_Utils_Request::retrieve( 'context', 'String', $this );
+        $cid     = CRM_Utils_Request::retrieve( 'cid', 'Positive', $this );
+        
+        if ( $context == 'activitySelector' ) {
+            $backUrl      = CRM_Utils_System::url( 'civicrm/contact/view', "reset=1&cid={$cid}&selectedChild=activity" );
+            $backUrlTitle = ts( 'Back to Activities');
+        } else if( $context == 'activity' ) {
+            $atype = CRM_Utils_Request::retrieve( 'atype', 'Positive', $this );
+            $aid   = CRM_Utils_Request::retrieve( 'aid',   'Positive', $this );
+            
+            $backUrl      = CRM_Utils_System::url( 'civicrm/activity/view', "atype={$atype}&action=view&reset=1&id={$aid}&cid={$cid}&context=activity" );
+            $backUrlTitle = ts( 'Back to Activity'); 
+        } else {
+            $backUrl      = CRM_Utils_System::url( 'civicrm/mailing', 'reset=1' );
+            $backUrlTitle = ts( 'Back to CiviMail' );
         }
-        if ($report['mailing']['footer_id']) { 
-            $footer = new CRM_Mailing_BAO_Component();
-            $footer->id = $report['mailing']['footer_id'];
-            $footer->find(true);
-            $htmlFooter = $footer->body_html;
-            $textFooter = $footer->body_text;
-        }
-
-        $text = CRM_Utils_Request::retrieve( 'text', 'Boolean', $this );
-        if ( $text ) {
-            echo "<pre>{$textHeader}</br>{$report['mailing']['body_text']}</br>{$textFooter}</pre>";
-            exit( );
-        }
-
-        $html = CRM_Utils_Request::retrieve( 'html', 'Boolean', $this );
-        if ( $html ) {
-            echo $htmlHeader . $report['mailing']['body_html'] . $htmlFooter;
-            exit( );
-        }
-
-        if ( ! empty( $report['mailing']['body_text'] ) ) {
-            $url   = CRM_Utils_System::url( 'civicrm/mailing/report', 'reset=1&text=1&mid=' . $this->_mailing_id );
-            $popup =  "javascript:popUp(\"$url\");";
-            $this->assign( 'textViewURL' , $popup  );
-        }
-
-        if ( ! empty( $report['mailing']['body_html'] ) ) {
-            $url   = CRM_Utils_System::url( 'civicrm/mailing/report', 'reset=1&html=1&mid=' . $this->_mailing_id );
-            $popup =  "javascript:popUp(\"$url\");";
-            $this->assign( 'htmlViewURL' , $popup  );
-        }
-
-        require_once 'CRM/Core/BAO/File.php';
-        $report['mailing']['attachment'] = CRM_Core_BAO_File::attachmentInfo( 'civicrm_mailing',
-                                                                              $this->_mailing_id );
-        $backUrl = CRM_Utils_System::url( 'civicrm/mailing', 'reset=1');
         $this->assign( 'backUrl', $backUrl );
+        $this->assign( 'backUrlTitle', $backUrlTitle );
 
         $this->assign( 'report', $report );
         CRM_Utils_System::setTitle( ts( 'CiviMail Report: %1',

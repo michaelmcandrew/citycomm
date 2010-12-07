@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,12 +18,14 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
  +--------------------------------------------------------------------+
 */
+
 
 /**
  * Definition of the ActivityType part of the CRM API. 
@@ -31,11 +33,17 @@
  * {@link http://objectledge.org/confluence/display/CRM/CRM+v1.0+Public+APIs
  * here}
  *
- * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
- * $Id$
+ * @package CiviCRM_APIv2
+ * @subpackage API_Activity
+ *
+ * @copyright CiviCRM LLC (c) 2004-2010
+ * $Id: ActivityType.php 28934 2010-07-28 18:44:12Z mover $
  *
  */
+
+/**
+ * Include common API util functions
+ */   
 require_once 'api/v2/utils.php';
 
 /**
@@ -52,7 +60,7 @@ function civicrm_activity_type_get( ) {
 
 /**
  * Function to create activity type
- * @params array   $params  associated array of fields
+ * @param array   $params  associated array of fields
  *                 $params['option_value_id'] is required for updation of activity type
  * @return array $activityType created / updated activity type
  *
@@ -81,12 +89,19 @@ function civicrm_activity_type_create( $params ) {
 
 /**
  * Function to delete activity type
- * @activityTypeId int   activity type id to delete
+ * @param activityTypeId int   activity type id to delete
  * @return boolen
  *
  * @access public
  */
-function civicrm_activity_type_delete( $activityTypeId ) {
-    require_once 'CRM/Core/BAO/OptionGroup.php';
+function civicrm_activity_type_delete( $params ) {
+
+    if ( ! isset( $params['activity_type_id'] ) ) {
+        return civicrm_create_error( ts( 'Required parameter "activity_type_id" not found' ) );
+    } 
+
+    $activityTypeId = $params['activity_type_id'];
+    require_once 'CRM/Core/BAO/OptionValue.php';
+
     return CRM_Core_BAO_OptionValue::del( $activityTypeId );
 }

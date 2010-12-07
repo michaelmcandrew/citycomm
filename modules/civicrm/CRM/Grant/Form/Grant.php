@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -58,6 +59,7 @@ class CRM_Grant_Form_Grant extends CRM_Core_Form
      */
     protected $_contactID;
 
+    protected $_context;
     /** 
      * Function to set variables up before form is built 
      *                                                           
@@ -68,10 +70,24 @@ class CRM_Grant_Form_Grant extends CRM_Core_Form
     {  
         $this->_contactID = CRM_Utils_Request::retrieve( 'cid', 'Positive', $this );
         $this->_id        = CRM_Utils_Request::retrieve( 'id', 'Positive', $this );
+        $this->_context   = CRM_Utils_Request::retrieve( 'context', 'String', $this );
+        
+        $this->assign( 'action', $this->_action );
+        $this->assign( 'context', $this->_context );
+        
+        //check permission for action.
+        if ( !CRM_Core_Permission::checkActionPermission( 'CiviGrant', $this->_action ) ) {
+            CRM_Core_Error::fatal( ts( 'You do not have permission to access this page' ) );  
+        }
+
+        if ( $this->_action & CRM_Core_Action::DELETE ) {
+            return;
+        }
+        
         $this->_noteId =null;
         if ( $this->_id) {
             require_once 'CRM/Core/BAO/Note.php';
-            $noteDAO               = & new CRM_Core_BAO_Note();
+            $noteDAO               = new CRM_Core_BAO_Note();
             $noteDAO->entity_table = 'civicrm_grant';
             $noteDAO->entity_id    = $this->_id;
             if ( $noteDAO->find(true) ) {
@@ -87,6 +103,10 @@ class CRM_Grant_Form_Grant extends CRM_Core_Form
     {
         $defaults = array( );
         $defaults = parent::setDefaultValues();
+        
+        if ( $this->_action & CRM_Core_Action::DELETE ) {
+            return $defaults;
+        }
         
         $params['id'] =  $this->_id;
         if ( $this->_noteId ) {
@@ -107,11 +127,21 @@ class CRM_Grant_Form_Grant extends CRM_Core_Form
                 $defaults['amount_granted'] = CRM_Utils_Money::format($defaults['amount_granted'], null, '%a');
             }
             
+            $dates = array( 'application_received_date',
+                            'decision_date',
+                            'money_transfer_date',
+                            'grant_due_date' );
+            
+            foreach( $dates as $key ) { 
+                if ( CRM_Utils_Array::value( $key, $defaults ) ) {
+                    list( $defaults[$key] ) = CRM_Utils_Date::setDateDefaults( $defaults[$key] );
+                }
+            }
         } else {
-            $now = date("Y-m-d");
-            $defaults['application_received_date'] = $now;
+            require_once 'CRM/Utils/Date.php';
+            list( $defaults['application_received_date'] ) = CRM_Utils_Date::setDateDefaults( );
         }
-        
+                
 		// custom data set defaults
 		$defaults += CRM_Custom_Form_Customdata::setDefaultValues( $this );
         return $defaults;
@@ -125,6 +155,19 @@ class CRM_Grant_Form_Grant extends CRM_Core_Form
      */ 
     public function buildQuickForm( )  
     {         
+        if ( $this->_action & CRM_Core_Action::DELETE ) {
+            $this->addButtons(array( 
+                                    array ( 'type'      => 'next', 
+                                            'name'      => ts('Delete'), 
+                                            'spacing'   => '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;', 
+                                            'isDefault' => true   ), 
+                                    array ( 'type'      => 'cancel', 
+                                            'name'      => ts('Cancel') ), 
+                                    ) 
+                              );
+            return;
+        }
+        
         require_once 'CRM/Core/OptionGroup.php';
         require_once 'CRM/Grant/BAO/Grant.php';
         $attributes = CRM_Core_DAO::getAttribute('CRM_Grant_DAO_Grant');
@@ -136,26 +179,10 @@ class CRM_Grant_Form_Grant extends CRM_Core_Form
         $this->add('select', 'status_id',  ts( 'Grant Status' ),
                    array( '' => ts( '- select -' ) ) + $grantStatus , true);
 
-
-        $this->add( 'date', 'application_received_date', ts('Application Received'),
-                    CRM_Core_SelectValues::date( 'manual',20,10 ),
-                    false);
-        $this->addRule('application_received_date', ts('Select a valid date.'), 'qfDate'); 
-
-        $this->add( 'date', 'decision_date', ts('Grant Decision'),
-                    CRM_Core_SelectValues::date( 'manual',20,10 ),
-                    false);
-        $this->addRule('decision_date', ts('Select a valid date.'), 'qfDate');
-                    
-        $this->add( 'date', 'money_transfer_date', ts('Money Transferred'),
-                    CRM_Core_SelectValues::date( 'manual',20,10 ),
-                    false);
-        $this->addRule('money_transfer_date', ts('Select a valid date.'), 'qfDate');  
-
-        $this->add( 'date', 'grant_due_date', ts('Grant Report Due'),
-                    CRM_Core_SelectValues::date('manual',20,10 ),
-                    false);
-        $this->addRule('grant_due_date', ts('Select a valid date.'), 'qfDate');
+        $this->addDate( 'application_received_date', ts('Application Received'), false, array( 'formatType' => 'custom') );
+        $this->addDate( 'decision_date', ts('Grant Decision'), false, array( 'formatType' => 'custom') );
+        $this->addDate( 'money_transfer_date', ts('Money Transferred'), false, array( 'formatType' => 'custom') );
+        $this->addDate( 'grant_due_date', ts('Grant Report Due'), false, array( 'formatType' => 'custom') );
 
         $this->addElement('checkbox','grant_report_received', ts('Grant Report Received?'),null );
         $this->add('textarea', 'rationale', ts('Rationale'), $attributes['rationale']);
@@ -185,12 +212,21 @@ class CRM_Grant_Form_Grant extends CRM_Core_Form
         $this->addButtons(array( 
                                 array ( 'type'      => 'upload',
                                         'name'      => ts('Save'), 
-                                        'spacing'   => '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;', 
                                         'isDefault' => true   ), 
+                                array ( 'type'      => 'upload',
+                                        'name'      => ts('Save and New'), 
+                                        'js'        => array( 'onclick' => "return verify( );" ),
+                                        'subName'   => 'new' ),
                                 array ( 'type'      => 'cancel', 
                                         'name'      => ts('Cancel') ), 
                                 ) 
                           );
+        
+        if ( $this->_context == 'standalone' ) {
+            require_once 'CRM/Contact/Form/NewContact.php';
+            CRM_Contact_Form_NewContact::buildQuickForm( $this );
+            $this->addFormRule( array( 'CRM_Grant_Form_Grant', 'formRule' ), $this );
+        }
     }
     
     /**  
@@ -204,8 +240,13 @@ class CRM_Grant_Form_Grant extends CRM_Core_Form
      * @access public  
      * @static  
      */  
-    static function formRule( &$fields, &$files, $self ) {  
+    static function formRule( $fields, $files, $self ) {  
         $errors = array( ); 
+        
+        if ( isset( $fields['contact_select_id'] ) && !$fields['contact_select_id'] ) {
+            $errors['contact'] = ts('Please select a contact or create new contact');
+        }
+        
         return $errors;
     }
     
@@ -219,6 +260,8 @@ class CRM_Grant_Form_Grant extends CRM_Core_Form
     public function postProcess( )  
     { 
         if ( $this->_action & CRM_Core_Action::DELETE ) {
+            require_once 'CRM/Grant/BAO/Grant.php';
+            CRM_Grant_BAO_Grant::del( $this->_id );
             return;
         }
         
@@ -229,15 +272,24 @@ class CRM_Grant_Form_Grant extends CRM_Core_Form
         // get the submitted form values.  
         $params = $this->controller->exportValues( $this->_name );
 
-        if (!$params['grant_report_received']){
+        if (!$params['grant_report_received']) {
             $params['grant_report_received'] = "null";
+        } 
+        // set the contact, when contact is selected
+        if ( CRM_Utils_Array::value('contact_select_id', $params ) ) {
+            $this->_contactID = CRM_Utils_Array::value('contact_select_id', $params);
         }
         
-        $params['contact_id'               ] = $this->_contactID;
-        $params['application_received_date'] = CRM_Utils_Date::format($params['application_received_date']);
-        $params['decision_date'            ] = CRM_Utils_Date::format($params['decision_date']);
-        $params['money_transfer_date'      ] = CRM_Utils_Date::format($params['money_transfer_date']);
-        $params['grant_due_date'           ] = CRM_Utils_Date::format($params['grant_due_date']);
+        $params['contact_id'] = $this->_contactID;
+
+        $dates = array( 'application_received_date',
+                        'decision_date',
+                        'money_transfer_date',
+                        'grant_due_date' );
+        
+        foreach ( $dates as $d ) {
+            $params[$d] = CRM_Utils_Date::processDate( $params[$d], null, true );
+        }
      
         $ids['note'] = array( );
         if ( $this->_noteId ) {
@@ -258,7 +310,22 @@ class CRM_Grant_Form_Grant extends CRM_Core_Form
                                              $this->_id );
 
         require_once 'CRM/Grant/BAO/Grant.php';
-        $grant =& CRM_Grant_BAO_Grant::create($params, $ids);
+        $grant = CRM_Grant_BAO_Grant::create($params, $ids);
+
+        $buttonName = $this->controller->getButtonName( );
+        $session = CRM_Core_Session::singleton( );
+        if ( $this->_context == 'standalone' ) {
+            if ( $buttonName == $this->getButtonName( 'upload', 'new' ) ) {
+                $session->replaceUserContext(CRM_Utils_System::url('civicrm/grant/add', 
+                                                                   'reset=1&action=add&context=standalone') );
+            } else {
+                $session->replaceUserContext(CRM_Utils_System::url( 'civicrm/contact/view',
+                                                                    "reset=1&cid={$this->_contactID}&selectedChild=grant" ) );
+            }
+        } else if ( $buttonName == $this->getButtonName( 'upload', 'new' ) ) {
+            $session->replaceUserContext(CRM_Utils_System::url('civicrm/contact/view/grant', 
+                                                               "reset=1&action=add&context=grant&cid={$this->_contactID}") );
+        }
     }
 }
 

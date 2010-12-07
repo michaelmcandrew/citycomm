@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,19 +29,19 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
 
-require_once 'CRM/Contact/Page/View.php';
+require_once 'CRM/Core/Page.php';
 require_once 'CRM/Case/BAO/Case.php';
 
 /**
  * This class handle case related functions
  *
  */
-class CRM_Case_Page_Tab extends CRM_Contact_Page_View 
+class CRM_Case_Page_Tab extends CRM_Core_Page 
 {
     /**
      * The action links that we need to display for the browse screen
@@ -49,39 +50,51 @@ class CRM_Case_Page_Tab extends CRM_Contact_Page_View
      * @static
      */
     static $_links = null;
-    /**
-     * mycase or all 
-     *
-     * @var boolean
-     */
-    public $_all = 0;
-
+    public $_permission = null;
+    public $_contactId  = null;    
+    
     function preProcess( )
     {
+        $this->_action = CRM_Utils_Request::retrieve('action', 'String', $this, false, 'browse');
+        
         // Make sure case types have been configured for the component
         require_once 'CRM/Core/OptionGroup.php';        
-        $caseType = CRM_Core_OptionGroup::values('case_type');
+        $caseType = CRM_Core_OptionGroup::values( 'case_type', false, false, false, null, 'label', false );
         if ( empty( $caseType ) ){
             $this->assign('notConfigured', 1);
             return;
         }
+
+        $activeCaseTypes = CRM_Core_OptionGroup::values( 'case_type' );
+        $this->assign( 'allowToAddNewCase', empty( $activeCaseTypes ) ? false : true );
+
         $this->_id        = CRM_Utils_Request::retrieve( 'id' , 'Positive', $this );
         $this->_contactId = CRM_Utils_Request::retrieve( 'cid', 'Positive', $this );
         $this->_context   = CRM_Utils_Request::retrieve( 'context', 'String', $this );
-        $this->_all       = CRM_Utils_Request::retrieve( 'all' , 'Boolean', $this );
-           
-        // contact id is not mandatory for case form. If not found, don't call
-        // parent's pre-process and proceed further.
+        
         if ( $this->_contactId ) {
-            parent::preProcess( );
+            $this->assign( 'contactId', $this->_contactId );
+            // check logged in user permission
+            require_once 'CRM/Contact/Page/View.php';
+            if ( $this->_id && ($this->_action & CRM_Core_Action::VIEW) ) {
+                //user might have special permissions to view this case, CRM-5666
+                if ( !CRM_Core_Permission::check( 'access all cases and activities' ) ) {
+                    $session   = CRM_Core_Session::singleton( );
+                    $userCases = CRM_Case_BAO_Case::getCases( false, $session->get( 'userID') );
+                    if ( !array_key_exists( $this->_id, $userCases ) ) {
+                        CRM_Core_Error::fatal( ts( 'You are not authorized to access this page.' ) );
+                    }
+                }
+            } else {
+                CRM_Contact_Page_View::checkUserPermission( $this );
+            }
+            
+            // set page title
+            CRM_Contact_Page_View::setTitle( $this->_contactId );
         } else {
-            // we would need action to proceed further.
-            $this->_action = CRM_Utils_Request::retrieve('action', 'String',
-                                                         $this, false, 'add');
             if ( $this->_action & CRM_Core_Action::VIEW ) {
                 CRM_Core_Error::fatal('Contact Id is required for view action.');
             }
-            $this->assign( 'action', $this->_action);
         }
 
         $activityTypes = CRM_Case_PseudoConstant::activityType( );
@@ -100,7 +113,7 @@ class CRM_Case_Page_Tab extends CRM_Contact_Page_View
      */
     function view( ) 
     {
-        $controller =& new CRM_Core_Controller_Simple( 'CRM_Case_Form_CaseView',
+        $controller = new CRM_Core_Controller_Simple( 'CRM_Case_Form_CaseView',
                                                        'View Case',  
                                                        $this->_action ); 
         $controller->setEmbedded( true ); 
@@ -112,8 +125,8 @@ class CRM_Case_Page_Tab extends CRM_Contact_Page_View
         require_once 'CRM/Activity/Selector/Activity.php' ;
         require_once 'CRM/Core/Selector/Controller.php';
         $output = CRM_Core_Selector_Controller::SESSION;
-        $selector   =& new CRM_Activity_Selector_Activity($this->_contactId, $this->_permission, false, 'case' );
-        $controller =& new CRM_Core_Selector_Controller($selector, $this->get(CRM_Utils_Pager::PAGE_ID),
+        $selector   = new CRM_Activity_Selector_Activity($this->_contactId, $this->_permission, false, 'case' );
+        $controller = new CRM_Core_Selector_Controller($selector, $this->get(CRM_Utils_Pager::PAGE_ID),
                                                         null, CRM_Core_Action::VIEW, $this,  $output, null, $this->_id);
         
         
@@ -133,7 +146,7 @@ class CRM_Case_Page_Tab extends CRM_Contact_Page_View
      */
     function browse( ) {
        
-        $controller =& new CRM_Core_Controller_Simple( 'CRM_Case_Form_Search', ts('Case'), null ); 
+        $controller = new CRM_Core_Controller_Simple( 'CRM_Case_Form_Search', ts('Case'), null ); 
         $controller->setEmbedded( true ); 
         $controller->reset( ); 
         $controller->set( 'limit', 20 );
@@ -141,6 +154,12 @@ class CRM_Case_Page_Tab extends CRM_Contact_Page_View
         $controller->set( 'context', 'case' ); 
         $controller->process( ); 
         $controller->run( ); 
+    
+        if ( $this->_contactId ) {
+            require_once 'CRM/Contact/BAO/Contact.php';
+            $displayName = CRM_Contact_BAO_Contact::displayName( $this->_contactId );
+            $this->assign( 'displayName', $displayName );
+        }        
     }
 
     /**
@@ -151,15 +170,13 @@ class CRM_Case_Page_Tab extends CRM_Contact_Page_View
      */
     function edit( ) 
     {
-        $config =& CRM_Core_Config::singleton( );
+        $config = CRM_Core_Config::singleton( );
 
-        $controller =& new CRM_Core_Controller_Simple( 'CRM_Case_Form_Case', 
+        $controller = new CRM_Core_Controller_Simple( 'CRM_Case_Form_Case', 
                                                        'Open Case', 
                                                        $this->_action );
         
         $controller->setEmbedded( true );
-        $controller->set( 'id' , $this->_id ); 
-        $controller->set( 'cid', $this->_contactId ); 
         
         return $controller->run( );
     }
@@ -173,17 +190,30 @@ class CRM_Case_Page_Tab extends CRM_Contact_Page_View
      */
     function run( ) 
     {
-        $this->preProcess( );
+        $contactID  = CRM_Utils_Request::retrieve('cid', 'Positive', CRM_Core_DAO::$_nullArray );
+        $context    = CRM_Utils_Request::retrieve('context', 'String', $this );
+
+        if ( $context == 'standalone' && !$contactID ) {
+            $this->_action = CRM_Core_Action::ADD;
+        } else {
+            // we need to call parent preprocess only when we are viewing / editing / adding participant record
+            $this->preProcess( );           
+        }        
+
+        $this->assign( 'action', $this->_action);
+        
+        $this->setContext( );        
 
         if ( $this->_action & CRM_Core_Action::VIEW ) {
             $this->view( );
-        } else if ( $this->_action & ( CRM_Core_Action::UPDATE | CRM_Core_Action::ADD | CRM_Core_Action::DELETE | CRM_Core_Action::RENEW ) ) {
+        } else if ( ( $this->_action & 
+                      ( CRM_Core_Action::UPDATE | CRM_Core_Action::ADD | 
+                        CRM_Core_Action::DELETE | CRM_Core_Action::RENEW ) ) ||
+                    ! empty( $_POST ) ) {
             $this->edit( );
         } else if ( $this->_contactId ) {
             $this->browse( );
         }
-
-        $this->setContext( );
 
         return parent::run( );
     }
@@ -197,7 +227,7 @@ class CRM_Case_Page_Tab extends CRM_Contact_Page_View
      */
     static function &links()
     {
-        $config =& CRM_Core_Config::singleton( );
+        $config = CRM_Core_Config::singleton( );
        
         if (!(self::$_links)) {
             $deleteExtra = ts('Are you sure you want to delete this case?');
@@ -225,7 +255,12 @@ class CRM_Case_Page_Tab extends CRM_Contact_Page_View
     {
         $context = $this->get('context');
         $url     = null;
-
+        
+        $qfKey = CRM_Utils_Request::retrieve( 'key', 'String', $this );
+        //validate the qfKey
+        require_once 'CRM/Utils/Rule.php';
+        if ( !CRM_Utils_Rule::qfKey( $qfKey ) ) $qfKey = null;   
+        
         switch ( $context ) {
         case 'activity':
             if ( $this->_contactId ) {
@@ -235,15 +270,37 @@ class CRM_Case_Page_Tab extends CRM_Contact_Page_View
             break;
             
         case 'dashboard': 
-            $url = CRM_Utils_System::url( 'civicrm/case', "reset=1&all={$this->_all}" );
+            $url = CRM_Utils_System::url( 'civicrm/case', "reset=1" );
             break;
 
-        case 'search':        
-            $url = CRM_Utils_System::url( 'civicrm/case/search', "force=1&all={$this->_all}" );
+        case 'search':
+            $urlParams = 'force=1';
+            if ( $qfKey ) $urlParams .= "&qfKey=$qfKey";
+            
+            $url = CRM_Utils_System::url( 'civicrm/case/search', $urlParams );
             break;
             
         case 'home':
             $url = CRM_Utils_System::url( 'civicrm/dashboard', 'reset=1' );
+            break;
+          
+        case 'standalone':
+            $url = CRM_Utils_System::url( 'civicrm/dashboard', 'reset=1' );
+            break;
+            
+        case 'fulltext':
+            $action = CRM_Utils_Request::retrieve('action', 'String', $this);
+            $urlParams = 'force=1';
+            $urlString = 'civicrm/contact/search/custom';
+            if ( $action == CRM_Core_Action::RENEW ) {
+                if ( $this->_contactId ) {
+                    $urlParams .= '&cid=' . $this->_contactId;
+                }
+                $urlParams .= '&context=fulltext&action=view';
+                $urlString  = 'civicrm/contact/view/case';
+            }
+            if ( $qfKey ) $urlParams .= "&qfKey=$qfKey";
+            $url = CRM_Utils_System::url( $urlString, $urlParams );
             break;
             
         default:
@@ -255,7 +312,7 @@ class CRM_Case_Page_Tab extends CRM_Contact_Page_View
         }
         
         if ( $url ) {
-            $session =& CRM_Core_Session::singleton( ); 
+            $session = CRM_Core_Session::singleton( ); 
             $session->pushUserContext( $url );
         }
     }

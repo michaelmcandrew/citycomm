@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -179,10 +180,27 @@ class CRM_Mailing_Selector_Browse   extends CRM_Core_Selector_Base
      * @return int Total number of rows 
      * @access public
      */
-    function getTotalCount($action)
+    function getTotalCount( $action )
     {
+        require_once 'CRM/Mailing/BAO/Job.php';
         require_once 'CRM/Mailing/BAO/Mailing.php';
-        return CRM_Mailing_BAO_Mailing::mailingACLIDs( true );
+        $job        = CRM_Mailing_BAO_Job::getTableName( );
+        $mailing    = CRM_Mailing_BAO_Mailing::getTableName( );
+        $mailingACL = CRM_Mailing_BAO_Mailing::mailingACL( );
+        
+        //get the where clause.
+        $params = array( );
+        $whereClause = "$mailingACL AND " . $this->whereClause( $params );
+        
+        $query = "
+   SELECT  COUNT( DISTINCT $mailing.id ) as count
+     FROM  $mailing
+LEFT JOIN  $job ON ( $mailing.id = $job.mailing_id) 
+LEFT JOIN  civicrm_contact createdContact   ON ( $mailing.created_id   = createdContact.id )
+LEFT JOIN  civicrm_contact scheduledContact ON ( $mailing.scheduled_id = scheduledContact.id ) 
+    WHERE  $whereClause";
+        
+        return CRM_Core_DAO::singleValueQuery( $query, $params );
     }
 
     /**
@@ -246,7 +264,7 @@ class CRM_Mailing_Selector_Browse   extends CRM_Core_Selector_Base
         }
 
         
-        $mailing =& new CRM_Mailing_BAO_Mailing();
+        $mailing = new CRM_Mailing_BAO_Mailing();
         
         $params = array( );
         $whereClause = ' AND ' . $this->whereClause( $params );
@@ -261,8 +279,13 @@ class CRM_Mailing_Selector_Browse   extends CRM_Core_Selector_Base
         //get the search base mailing Ids, CRM-3711.
         $searchMailings = $mailing->searchMailingIDs( );
         
+        //check for delete CRM-4418
+        require_once 'CRM/Core/Permission.php'; 
+        $allowToDelete = CRM_Core_Permission::check( 'delete in CiviMail' );
+        
         if ($output != CRM_Core_Selector_Controller::EXPORT) {
             foreach ($rows as $key => $row) {
+                $actionMask = null;
                 if (!($row['status'] == 'Not scheduled')) {
                     $actionMask = CRM_Core_Action::VIEW;
                     if ( !in_array( $row['id'], $searchMailings ) ) {
@@ -273,8 +296,6 @@ class CRM_Mailing_Selector_Browse   extends CRM_Core_Selector_Base
                     //search base mailing, we should handle it when we fix CRM-3876
                     if ( !in_array( $row['id'], $searchMailings ) ) {
                         $actionMask = CRM_Core_Action::PREVIEW;
-                    } else {
-                        $actionMask = CRM_Core_Action::DELETE;
                     }
                 }
                 if (in_array($row['status'], array('Scheduled', 'Running', 'Paused'))) {
@@ -284,8 +305,11 @@ class CRM_Mailing_Selector_Browse   extends CRM_Core_Selector_Base
                     $actionMask |= CRM_Core_Action::RENEW;
                 }
                 
-                $actionMask |= CRM_Core_Action::DELETE;
-               
+                //check for delete permission.
+                if ( $allowToDelete ) {
+                    $actionMask |= CRM_Core_Action::DELETE;
+                }
+                
                 //get status strings as per locale settings CRM-4411.
                 $rows[$key]['status'] = CRM_Mailing_BAO_Job::status( $row['status'] );
                                
@@ -341,33 +365,32 @@ class CRM_Mailing_Selector_Browse   extends CRM_Core_Selector_Base
 
         $from = $this->_parent->get( 'mailing_from' );
         if ( ! CRM_Utils_System::isNull( $from ) ) {
-            $from = CRM_Utils_date::format( $from );
-            $from .= '000000';
             $clauses[] = 'start_date >= %2';
             $params[2] = array( $from, 'String' );
         }
 
         $to = $this->_parent->get( 'mailing_to' );
         if ( ! CRM_Utils_System::isNull( $to ) ) {
-            $to = CRM_Utils_date::format( $to );
-            $to .= '235959';
             $clauses[] = 'start_date <= %3';
             $params[3] = array( $to, 'String' );
         }
-
+        
         if ( $this->_parent->get( 'unscheduled' ) ) {
             $clauses[] = "civicrm_mailing_job.status is null";
+            $clauses[] = "civicrm_mailing.scheduled_id IS NULL";
         }
 
         if ( $this->_parent->get( 'archived' ) ) {
-            $clauses[] = "civicrm_mailing.is_archived = 1";
+            // CRM-6446: archived view should also show cancelled mailings
+            $clauses[] = "(civicrm_mailing.is_archived = 1 OR civicrm_mailing_job.status = 'Canceled')";
         }
-
+        
         // CRM-4290, do not show archived or unscheduled mails 
         // on 'Scheduled and Sent Mailing' page selector 
         if( $this->_parent->get( 'scheduled' ) ) { 
-            $clauses[] = "civicrm_mailing.is_archived = 0";
-            $clauses[] = "civicrm_mailing_job.status IN ('Scheduled', 'Complete')";
+            $clauses[] = "civicrm_mailing.scheduled_id IS NOT NULL";
+            $clauses[] = "( civicrm_mailing.is_archived IS NULL OR civicrm_mailing.is_archived = 0 )";
+            $clauses[] = "civicrm_mailing_job.status IN ('Scheduled', 'Complete', 'Running')";
         }
             
         if ( $sortBy &&
@@ -390,6 +413,12 @@ class CRM_Mailing_Selector_Browse   extends CRM_Core_Selector_Base
         if ( !CRM_Utils_System::isNull( $createOrSentBy ) ) {
             $clauses[] = '(createdContact.sort_name LIKE %4 OR scheduledContact.sort_name LIKE %4)';
             $params[4] = array( '%' . $createOrSentBy . '%', 'String' );
+        }
+        
+        $createdId = $this->_parent->get( 'createdId' );
+        if ( $createdId ) {
+            $clauses[] = "(created_id = {$createdId})";
+            $params[5] = array( $createdId, 'Integer' );
         }
         
         if ( empty( $clauses ) ) {

@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -183,9 +184,11 @@ contribution2_total_amount_count, contribution2_total_amount_sum',
                                         'title'        => ts( 'Group' ),
                                         'operatorType' => CRM_Report_Form::OP_MULTISELECT,
                                         'group'        => true,
-                                        'options'      => CRM_Core_PseudoConstant::staticGroup( ) ), ), ),
+                                        'options'      => CRM_Core_PseudoConstant::group( ) ), ), ),
+  
                    );
 
+        $this->_tagFilter = true;
         parent::__construct( );
     }
 
@@ -333,7 +336,7 @@ LEFT  JOIN (
           sum( contribution1.total_amount ) AS contribution1_total_amount_sum, 
           count( * ) AS contribution1_total_amount_count
    FROM   civicrm_contribution contribution1
-   WHERE  ( $receive_date1 ) $contriStatus1
+   WHERE  ( $receive_date1 ) $contriStatus1 AND contribution1.is_test = 0
    GROUP BY contribution1.$contriCol
 ) contribution1 ON $fromAlias.$fromCol = contribution1.$contriCol
 
@@ -342,7 +345,7 @@ LEFT  JOIN (
           sum( contribution2.total_amount ) AS contribution2_total_amount_sum, 
           count( * ) AS contribution2_total_amount_count
    FROM   civicrm_contribution contribution2
-   WHERE  ( $receive_date2 ) $contriStatus2
+   WHERE  ( $receive_date2 ) $contriStatus2 AND contribution2.is_test = 0
    GROUP BY contribution2.$contriCol
 ) contribution2 ON $fromAlias.$fromCol = contribution2.$contriCol
 ";
@@ -367,9 +370,7 @@ LEFT  JOIN (
                         }
                     }
                     if ( ! empty( $clause ) ) {
-                        if ( CRM_Utils_Array::value( 'group', $field ) ) {
-                            $clauses[] = $this->whereGroupClause( $clause );
-                        } else if ( ! empty( $clause ) && $fieldName != 'contribution_status_id' ) {
+                        if ( ! empty( $clause ) && $fieldName != 'contribution_status_id' ) {
                             $clauses[] = $clause;
                         }
                     }
@@ -384,7 +385,7 @@ LEFT  JOIN (
         }
     }
 
-    function formRule ( &$fields, &$files, $self ) {
+    function formRule ( &$fields, &$files, &$self ) {
         require_once 'CRM/Utils/Date.php';
         
         $errors = $checkDate = $errorCount = array( );
@@ -437,7 +438,7 @@ LEFT  JOIN (
             }
         }
         
-        if ( !empty( $fields['gid_value'] ) ) {
+        if ( !empty( $fields['gid_value'] ) && CRM_Utils_Array::value( 'group_bys', $fields ) ) {
             if ( !array_key_exists( 'id', $fields['group_bys'] ) ) {
                 $errors['gid_value'] = ts("Filter with Group only allow with group by Contact");
             }

@@ -1,15 +1,15 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -25,15 +26,19 @@
 */
 
 /**
- * new version of civicrm apis. See blog post at
- * http://civicrm.org/node/131
+ * File for the CiviCRM APIv2 group contact functions
  *
- * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
- * $Id: GroupContact.php 18662 2008-12-10 11:30:30Z kurund $
+ * @package CiviCRM_APIv2
+ * @subpackage API_Group
+ *
+ * @copyright CiviCRM LLC (c) 2004-2010
+ * @version $Id: GroupContact.php 28934 2010-07-28 18:44:12Z mover $
  *
  */
 
+/**
+ * Include utility functions
+ */
 require_once 'api/v2/utils.php';
 
 /**
@@ -42,12 +47,16 @@ require_once 'api/v2/utils.php';
  * If no status mentioned in params, by default 'added' will be used
  * to fetch the records
  * 
- * @params  array $params  name value pair of contact information
+ * @param  array $params  name value pair of contact information
  *
  * @return  array  list of groups, given contact subsribed to
  */
 function civicrm_group_contact_get( &$params ) 
 {
+    if ( ! is_array( $params ) ) {
+        return civicrm_create_error( ts( 'input parameter should be an array' ) );
+    }
+
     if ( ! array_key_exists( 'contact_id', $params ) ) {
         return civicrm_create_error( ts( 'contact_id is a required field' ) );
     }
@@ -58,18 +67,48 @@ function civicrm_group_contact_get( &$params )
     return $values;
 }
 
+/**
+ *
+ * @param <type> $params
+ * @return <type>
+ */
 function civicrm_group_contact_add( &$params ) 
 {
     return civicrm_group_contact_common( $params, 'add' );
 }
 
+/**
+ *
+ * @param <type> $params
+ * @return <type>
+ */
 function civicrm_group_contact_remove( &$params ) 
 {
     return civicrm_group_contact_common( $params, 'remove' );
 }
 
+/**
+ *
+ * @param <type> $params
+ * @return <type>
+ */
+function civicrm_group_contact_pending( &$params ) 
+{
+    return civicrm_group_contact_common( $params, 'pending' );
+}
+
+/**
+ *
+ * @param <type> $params
+ * @param <type> $op
+ * @return <type> 
+ */
 function civicrm_group_contact_common( &$params, $op = 'add' ) 
 {
+    if ( ! is_array( $params ) ) {
+        return civicrm_create_error( ts( 'input parameter should be an array' ) );
+    }
+
     $contactIDs = array( );
     $groupIDs = array( );
     foreach ( $params as $n => $v ) {
@@ -91,6 +130,8 @@ function civicrm_group_contact_common( &$params, $op = 'add' )
     $method     = CRM_Utils_Array::value( 'method'  , $params, 'API' );
     if ( $op == 'add' ) {
         $status     = CRM_Utils_Array::value( 'status'  , $params, 'Added'  );
+    } elseif ( $op == 'pending') {
+        $status     = CRM_Utils_Array::value( 'status'  , $params, 'Pending');
     } else {
         $status     = CRM_Utils_Array::value( 'status'  , $params, 'Removed');
     }
@@ -98,7 +139,7 @@ function civicrm_group_contact_common( &$params, $op = 'add' )
 
     require_once 'CRM/Contact/BAO/GroupContact.php';
     $values = array( 'is_error' => 0 );
-    if ( $op == 'add' ) {
+    if ( $op == 'add' || $op == 'pending') {
         $values['total_count'] = $values['added'] = $values['not_added'] = 0;
         foreach ( $groupIDs as $groupID ) {
             list( $tc, $a, $na ) = 
@@ -120,4 +161,30 @@ function civicrm_group_contact_common( &$params, $op = 'add' )
         }
     }
     return $values;
+}
+
+function civicrm_group_contact_update_status ( &$params ) {
+  if ( ! is_array( $params ) ) {
+      return civicrm_create_error( ts( 'input parameter should be an array' ) );
+  }
+  
+  if ( empty( $params['contact_id'] ) ) {
+      return civicrm_create_error( ts( 'contact_id is a required field' ) );
+  } else {
+    $contactID = $params['contact_id'];
+  }
+
+  if ( empty( $params['group_id'] ) ) {
+      return civicrm_create_error( ts( 'group_id is a required field' ) );
+  } else {
+    $groupID = $params['group_id'];
+  }
+  $method     = CRM_Utils_Array::value( 'method'  , $params, 'API' );
+  $tracking   = CRM_Utils_Array::value( 'tracking', $params );
+  
+  require_once 'CRM/Contact/BAO/GroupContact.php';
+  
+  CRM_Contact_BAO_GroupContact::updateGroupMembershipStatus( $contactID, $groupID, $method, $tracking );
+  
+  return TRUE;
 }

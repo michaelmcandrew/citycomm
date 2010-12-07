@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,18 +29,18 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
 
-require_once 'CRM/Contact/Page/View.php';
+require_once 'CRM/Core/Page.php';
 
 /**
  * Main page for viewing Notes.
  *
  */
-class CRM_Contact_Page_View_Note extends CRM_Contact_Page_View 
+class CRM_Contact_Page_View_Note extends CRM_Core_Page 
 {
     /**
      * The action links that we need to display for the browse screen
@@ -57,7 +58,7 @@ class CRM_Contact_Page_View_Note extends CRM_Contact_Page_View
      */
     function view( ) {
       
-        $note =& new CRM_Core_DAO_Note( );
+        $note = new CRM_Core_DAO_Note( );
         $note->id = $this->_id;
         if ( $note->find( true ) ) {
             $values = array( );
@@ -74,15 +75,24 @@ class CRM_Contact_Page_View_Note extends CRM_Contact_Page_View
      * @access public
      */
     function browse( ) {
-        $note =& new CRM_Core_DAO_Note( );
+        $note = new CRM_Core_DAO_Note( );
         $note->entity_table = 'civicrm_contact';
         $note->entity_id    = $this->_contactId;
 
         $note->orderBy( 'modified_date desc' );
-
+        
+        //CRM-4418, handling edit and delete separately. 
+        $permissions = array( $this->_permission );
+        if ( $this->_permission == CRM_Core_Permission::EDIT   ) {
+            //previously delete was subset of edit 
+            //so for consistency lets grant delete also.
+            $permissions[] = CRM_Core_Permission::DELETE;
+        }
+        $mask  = CRM_Core_Action::mask( $permissions );
+        
         $values =  array( );
         $links  =& self::links( );
-        $action = array_sum(array_keys($links)) & CRM_Core_Action::mask( $this->_permission );
+        $action = array_sum(array_keys($links)) & $mask;
         
         $note->find( );
         while ( $note->fetch( ) ) {
@@ -111,13 +121,11 @@ class CRM_Contact_Page_View_Note extends CRM_Contact_Page_View
      * @access public
      */
     function edit( ) {
-       
-
-        $controller =& new CRM_Core_Controller_Simple( 'CRM_Note_Form_Note', ts('Contact Notes'), $this->_action );
+        $controller = new CRM_Core_Controller_Simple( 'CRM_Note_Form_Note', ts('Contact Notes'), $this->_action );
         $controller->setEmbedded( true );
 
         // set the userContext stack
-        $session =& CRM_Core_Session::singleton();
+        $session = CRM_Core_Session::singleton();
         $url = CRM_Utils_System::url('civicrm/contact/view', 'action=browse&selectedChild=note&cid=' . $this->_contactId );
         $session->pushUserContext( $url );
 
@@ -135,6 +143,22 @@ class CRM_Contact_Page_View_Note extends CRM_Contact_Page_View
         $controller->process( );
         $controller->run( );
     }
+
+    function preProcess() {
+        $this->_id        = CRM_Utils_Request::retrieve( 'id', 'Positive', $this );
+        $this->_contactId = CRM_Utils_Request::retrieve( 'cid', 'Positive', $this, true );
+        $this->assign( 'contactId', $this->_contactId );
+
+        // check logged in url permission
+        require_once 'CRM/Contact/Page/View.php';
+        CRM_Contact_Page_View::checkUserPermission( $this );
+        
+        // set page title
+        CRM_Contact_Page_View::setTitle( $this->_contactId );
+        
+        $this->_action = CRM_Utils_Request::retrieve('action', 'String', $this, false, 'browse');
+        $this->assign( 'action', $this->_action);
+    }    
 
     /**
      * This function is the main function that is called when the page loads,

@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -67,6 +68,10 @@ class CRM_Contact_Form_Task_Batch extends CRM_Contact_Form_Task
      */
     protected $_userContext;
 
+    /**
+     * when not to reset sort_name
+     */
+    protected $_preserveDefault = true;
 
     /**
      * build all the data structures needed to build the form
@@ -102,13 +107,14 @@ class CRM_Contact_Form_Task_Batch extends CRM_Contact_Form_Task
         $this->addDefaultButtons( ts('Save') );
         $this->_fields  = array( );
         $this->_fields  = CRM_Core_BAO_UFGroup::getFields( $ufGroupId, false, CRM_Core_Action::VIEW );
-
+        
         // remove file type field and then limit fields
-        $fileFieldExists = false;
+        $suppressFields = false;
+        $removehtmlTypes = array( 'File', 'Autocomplete-Select' );
         foreach ($this->_fields as $name => $field ) {
             if ( $cfID = CRM_Core_BAO_CustomField::getKeyID($name) && 
-                 $this->_fields[$name]['data_type'] == 'File' ) {                        
-                $fileFieldExists = true;
+                 in_array( $this->_fields[$name]['html_type'], $removehtmlTypes ) ) {                        
+                $suppressFields = true;
                 unset($this->_fields[$name]);
             }
         }
@@ -127,10 +133,20 @@ class CRM_Contact_Form_Task_Batch extends CRM_Contact_Form_Task
         
         $this->assign( 'profileTitle', $this->_title );
         $this->assign( 'componentIds', $this->_contactIds );
-        
+
+        // if below fields are missing we should not reset sort name / display name
+        // CRM-6794
+        $preserveDefaultsArray = array( 'first_name', 'last_name', 'middle_name',
+                                        'organization_name',
+                                        'household_name');
+
         foreach ($this->_contactIds as $contactId) {
             foreach ($this->_fields as $name => $field ) {
                 CRM_Core_BAO_UFGroup::buildProfile($this, $field, null, $contactId );
+
+                if ( in_array($field['name'], $preserveDefaultsArray ) ) {
+                    $this->_preserveDefault = false;
+                }
             }
         }
         
@@ -139,8 +155,8 @@ class CRM_Contact_Form_Task_Batch extends CRM_Contact_Form_Task
         // don't set the status message when form is submitted.
         $buttonName = $this->controller->getButtonName('submit');
 
-        if ( $fileFieldExists && $buttonName != '_qf_BatchUpdateProfile_next' ) {
-            CRM_Core_Session::setStatus( "FILE type field(s) in the selected profile are not supported for Batch Update and have been excluded." );
+        if ( $suppressFields && $buttonName != '_qf_BatchUpdateProfile_next' ) {
+            CRM_Core_Session::setStatus( "FILE or Autocomplete Select type field(s) in the selected profile are not supported for Batch Update and have been excluded." );
         }
 
         $this->addDefaultButtons( ts( 'Update Contacts' ) );
@@ -184,7 +200,7 @@ class CRM_Contact_Form_Task_Batch extends CRM_Contact_Form_Task
      * @access public  
      * @static  
      */  
-    static function formRule( &$fields ) 
+    static function formRule( $fields ) 
     {
         $errors = array( );
         $externalIdentifiers = array( );
@@ -214,11 +230,33 @@ class CRM_Contact_Form_Task_Batch extends CRM_Contact_Form_Task
         $params = $this->exportValues( );
 
         $ufGroupId = $this->get( 'ufGroupId' );
+        $notify = null;
+        $inValidSubtypeCnt = 0;
+        //send profile notification email if 'notify' field is set
+        $notify = CRM_Core_DAO::getFieldValue( 'CRM_Core_DAO_UFGroup', $ufGroupId, 'notify' );        
         foreach( $params['field'] as $key => $value ) {
+           
+            //CRM-5521
+            //validate subtype before updating
+            if( CRM_Utils_Array::value('contact_sub_type', $value) && !CRM_Contact_BAO_ContactType::isAllowEdit($key) ) {
+                unset($value['contact_sub_type']);
+                $inValidSubtypeCnt++;
+            }
+
+            $value['preserveDBName'] = $this->_preserveDefault;
             CRM_Contact_BAO_Contact::createProfileContact($value, $this->_fields, $key, null, $ufGroupId );
+            if ( $notify ) {
+                $values = CRM_Core_BAO_UFGroup::checkFieldsEmptyValues( $ufGroupId, $key, null );      
+                CRM_Core_BAO_UFGroup::commonSendMail( $key, $values );
+            }    
         }
         
-        CRM_Core_Session::setStatus("Your updates have been saved.");
+        $statusMsg = ts("Your updates have been saved.");
+
+        if ( $inValidSubtypeCnt ) {
+          $statusMsg .= ' ' .  ts('Contact SubType field of %1 nunber of contact(s) has not been updated.', array(1 => $inValidSubtypeCnt));  
+        }
+        CRM_Core_Session::setStatus("{$statusMsg}");
     }//end of function
 }
 

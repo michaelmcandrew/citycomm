@@ -1,15 +1,15 @@
 <?php
 /*
 +--------------------------------------------------------------------+
-| CiviCRM version 2.2                                                |
+| CiviCRM version 3.2                                                |
 +--------------------------------------------------------------------+
-| Copyright CiviCRM LLC (c) 2004-2009                                |
+| Copyright CiviCRM LLC (c) 2004-2010                                |
 +--------------------------------------------------------------------+
 | This file is a part of CiviCRM.                                    |
 |                                                                    |
 | CiviCRM is free software; you can copy, modify, and distribute it  |
 | under the terms of the GNU Affero General Public License           |
-| Version 3, 19 November 2007.                                       |
+| Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
 |                                                                    |
 | CiviCRM is distributed in the hope that it will be useful, but     |
 | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
 | See the GNU Affero General Public License for more details.        |
 |                                                                    |
 | You should have received a copy of the GNU Affero General Public   |
-| License along with this program; if not, contact CiviCRM LLC       |
+| License and the CiviCRM Licensing Exception along                  |
+| with this program; if not, contact CiviCRM LLC                     |
 | at info[AT]civicrm[DOT]org. If you have questions about the        |
 | GNU Affero General Public License or the licensing of CiviCRM,     |
 | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -26,7 +27,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -88,7 +89,7 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
     /**
      * Type of Contact.
      *
-     * @var enum('Individual', 'Organization', 'Household')
+     * @var string
      */
     public $contact_type;
     /**
@@ -112,6 +113,11 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
      * @var boolean
      */
     public $do_not_mail;
+    /**
+     *
+     * @var boolean
+     */
+    public $do_not_sms;
     /**
      *
      * @var boolean
@@ -160,12 +166,6 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
      */
     public $legal_name;
     /**
-     * optional "home page" URL for this contact.
-     *
-     * @var string
-     */
-    public $home_URL;
-    /**
      * optional URL for preferred image (photo, logo, etc.) to display for this contact.
      *
      * @var string
@@ -177,6 +177,12 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
      * @var string
      */
     public $preferred_communication_method;
+    /**
+     * Which language is preferred for communication. FK to languages in civicrm_option_value.
+     *
+     * @var string
+     */
+    public $preferred_language;
     /**
      * What is the preferred mode of sending an email.
      *
@@ -232,17 +238,59 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
      */
     public $suffix_id;
     /**
-     * FK to civicrm_option_value.id, that has to be valid, registered Greeting type.
+     * FK to civicrm_option_value.id, that has to be valid registered Email Greeting.
      *
      * @var int unsigned
      */
-    public $greeting_type_id;
+    public $email_greeting_id;
     /**
-     * Custom greeting message.
+     * Custom Email Greeting.
      *
      * @var string
      */
-    public $custom_greeting;
+    public $email_greeting_custom;
+    /**
+     * Cache Email Greeting.
+     *
+     * @var string
+     */
+    public $email_greeting_display;
+    /**
+     * FK to civicrm_option_value.id, that has to be valid registered Postal Greeting.
+     *
+     * @var int unsigned
+     */
+    public $postal_greeting_id;
+    /**
+     * Custom Postal greeting.
+     *
+     * @var string
+     */
+    public $postal_greeting_custom;
+    /**
+     * Cache Postal greeting.
+     *
+     * @var string
+     */
+    public $postal_greeting_display;
+    /**
+     * FK to civicrm_option_value.id, that has to be valid registered Addressee.
+     *
+     * @var int unsigned
+     */
+    public $addressee_id;
+    /**
+     * Custom Addressee.
+     *
+     * @var string
+     */
+    public $addressee_custom;
+    /**
+     * Cache Addressee.
+     *
+     * @var string
+     */
+    public $addressee_display;
     /**
      * Job Title
      *
@@ -315,12 +363,17 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
      */
     public $employer_id;
     /**
+     *
+     * @var boolean
+     */
+    public $is_deleted;
+    /**
      * class constructor
      *
      * @access public
      * @return civicrm_contact
      */
-    function __construct() 
+    function __construct()
     {
         parent::__construct();
     }
@@ -330,7 +383,7 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &links() 
+    function &links()
     {
         if (!(self::$_links)) {
             self::$_links = array(
@@ -347,7 +400,7 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &fields() 
+    function &fields()
     {
         if (!(self::$_fields)) {
             self::$_fields = array(
@@ -364,8 +417,10 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
                 ) ,
                 'contact_type' => array(
                     'name' => 'contact_type',
-                    'type' => CRM_Utils_Type::T_ENUM,
+                    'type' => CRM_Utils_Type::T_STRING,
                     'title' => ts('Contact Type') ,
+                    'maxlength' => 64,
+                    'size' => CRM_Utils_Type::BIG,
                     'export' => true,
                     'where' => 'civicrm_contact.contact_type',
                     'headerPattern' => '',
@@ -374,13 +429,14 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
                 'contact_sub_type' => array(
                     'name' => 'contact_sub_type',
                     'type' => CRM_Utils_Type::T_STRING,
-                    'title' => ts('Contact Sub Type') ,
+                    'title' => ts('Contact Subtype') ,
                     'maxlength' => 64,
                     'size' => CRM_Utils_Type::BIG,
-                    'export' => true,
+                    'import' => true,
                     'where' => 'civicrm_contact.contact_sub_type',
-                    'headerPattern' => '/C(ontact )?(sub-type|sub type)/i',
+                    'headerPattern' => '/C(ontact )?(subtype|sub-type|sub type)/i',
                     'dataPattern' => '',
+                    'export' => true,
                 ) ,
                 'do_not_email' => array(
                     'name' => 'do_not_email',
@@ -409,6 +465,16 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
                     'import' => true,
                     'where' => 'civicrm_contact.do_not_mail',
                     'headerPattern' => '/^(d(o\s)?n(ot\s)?mail)|(\w*)?bulk\s?(\w*)$/i',
+                    'dataPattern' => '/^\d{1,}$/',
+                    'export' => true,
+                ) ,
+                'do_not_sms' => array(
+                    'name' => 'do_not_sms',
+                    'type' => CRM_Utils_Type::T_BOOLEAN,
+                    'title' => ts('Do Not Sms') ,
+                    'import' => true,
+                    'where' => 'civicrm_contact.do_not_sms',
+                    'headerPattern' => '/d(o )?(not )?(sms)/i',
                     'dataPattern' => '/^\d{1,}$/',
                     'export' => true,
                 ) ,
@@ -503,24 +569,11 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
                     'dataPattern' => '',
                     'export' => true,
                 ) ,
-                'home_URL' => array(
-                    'name' => 'home_URL',
-                    'type' => CRM_Utils_Type::T_STRING,
-                    'title' => ts('Website') ,
-                    'maxlength' => 128,
-                    'size' => CRM_Utils_Type::HUGE,
-                    'import' => true,
-                    'where' => 'civicrm_contact.home_URL',
-                    'headerPattern' => '/^(home\sURL)|URL|web|site/i',
-                    'dataPattern' => '/^[\w\/\:\.]+$/',
-                    'export' => true,
-                    'rule' => 'url',
-                ) ,
                 'image_URL' => array(
                     'name' => 'image_URL',
                     'type' => CRM_Utils_Type::T_STRING,
                     'title' => ts('Image Url') ,
-                    'maxlength' => 128,
+                    'maxlength' => 255,
                     'size' => CRM_Utils_Type::HUGE,
                     'import' => true,
                     'where' => 'civicrm_contact.image_URL',
@@ -540,6 +593,18 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
                     'dataPattern' => '/^\w+$/',
                     'export' => true,
                 ) ,
+                'preferred_language' => array(
+                    'name' => 'preferred_language',
+                    'type' => CRM_Utils_Type::T_STRING,
+                    'title' => ts('Preferred Language') ,
+                    'maxlength' => 5,
+                    'size' => CRM_Utils_Type::EIGHT,
+                    'import' => true,
+                    'where' => 'civicrm_contact.preferred_language',
+                    'headerPattern' => '/^lang/i',
+                    'dataPattern' => '',
+                    'export' => true,
+                ) ,
                 'preferred_mail_format' => array(
                     'name' => 'preferred_mail_format',
                     'type' => CRM_Utils_Type::T_ENUM,
@@ -549,6 +614,8 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
                     'headerPattern' => '/^p(ref\w*\s)?m(ail\s)?f(orm\w*)$/i',
                     'dataPattern' => '',
                     'export' => true,
+                    'default' => 'Both',
+                    'enumValues' => 'Text, HTML, Both',
                 ) ,
                 'hash' => array(
                     'name' => 'hash',
@@ -620,29 +687,81 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
                     'name' => 'suffix_id',
                     'type' => CRM_Utils_Type::T_INT,
                 ) ,
-                'greeting_type_id' => array(
-                    'name' => 'greeting_type_id',
+                'email_greeting_id' => array(
+                    'name' => 'email_greeting_id',
                     'type' => CRM_Utils_Type::T_INT,
-                    'title' => ts('Greeting Type') ,
                 ) ,
-                'custom_greeting' => array(
-                    'name' => 'custom_greeting',
+                'email_greeting_custom' => array(
+                    'name' => 'email_greeting_custom',
                     'type' => CRM_Utils_Type::T_STRING,
-                    'title' => ts('Custom Greeting') ,
+                    'title' => ts('Email Greeting Custom') ,
                     'maxlength' => 128,
                     'size' => CRM_Utils_Type::HUGE,
                     'import' => true,
-                    'where' => 'civicrm_contact.custom_greeting',
+                    'where' => 'civicrm_contact.email_greeting_custom',
                     'headerPattern' => '',
                     'dataPattern' => '',
-                    'export' => true,
+                    'export' => false,
+                ) ,
+                'email_greeting_display' => array(
+                    'name' => 'email_greeting_display',
+                    'type' => CRM_Utils_Type::T_STRING,
+                    'title' => ts('Email Greeting') ,
+                    'maxlength' => 255,
+                    'size' => CRM_Utils_Type::HUGE,
+                ) ,
+                'postal_greeting_id' => array(
+                    'name' => 'postal_greeting_id',
+                    'type' => CRM_Utils_Type::T_INT,
+                ) ,
+                'postal_greeting_custom' => array(
+                    'name' => 'postal_greeting_custom',
+                    'type' => CRM_Utils_Type::T_STRING,
+                    'title' => ts('Postal Greeting Custom') ,
+                    'maxlength' => 128,
+                    'size' => CRM_Utils_Type::HUGE,
+                    'import' => true,
+                    'where' => 'civicrm_contact.postal_greeting_custom',
+                    'headerPattern' => '',
+                    'dataPattern' => '',
+                    'export' => false,
+                ) ,
+                'postal_greeting_display' => array(
+                    'name' => 'postal_greeting_display',
+                    'type' => CRM_Utils_Type::T_STRING,
+                    'title' => ts('Postal Greeting') ,
+                    'maxlength' => 255,
+                    'size' => CRM_Utils_Type::HUGE,
+                ) ,
+                'addressee_id' => array(
+                    'name' => 'addressee_id',
+                    'type' => CRM_Utils_Type::T_INT,
+                ) ,
+                'addressee_custom' => array(
+                    'name' => 'addressee_custom',
+                    'type' => CRM_Utils_Type::T_STRING,
+                    'title' => ts('Addressee Custom') ,
+                    'maxlength' => 128,
+                    'size' => CRM_Utils_Type::HUGE,
+                    'import' => true,
+                    'where' => 'civicrm_contact.addressee_custom',
+                    'headerPattern' => '',
+                    'dataPattern' => '',
+                    'export' => false,
+                ) ,
+                'addressee_display' => array(
+                    'name' => 'addressee_display',
+                    'type' => CRM_Utils_Type::T_STRING,
+                    'title' => ts('Addressee') ,
+                    'maxlength' => 255,
+                    'size' => CRM_Utils_Type::HUGE,
                 ) ,
                 'job_title' => array(
                     'name' => 'job_title',
                     'type' => CRM_Utils_Type::T_STRING,
                     'title' => ts('Job Title') ,
-                    'maxlength' => 64,
-                    'size' => CRM_Utils_Type::BIG,
+                    'maxlength' => 255,
+                    'size' => CRM_Utils_Type::HUGE,
                     'import' => true,
                     'where' => 'civicrm_contact.job_title',
                     'headerPattern' => '/^job|(j(ob\s)?title)$/i',
@@ -686,6 +805,12 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
                 'mail_to_household_id' => array(
                     'name' => 'mail_to_household_id',
                     'type' => CRM_Utils_Type::T_INT,
+                    'title' => ts('Mail to Household ID') ,
+                    'export' => true,
+                    'where' => 'civicrm_contact.mail_to_household_id',
+                    'headerPattern' => '',
+                    'dataPattern' => '',
+                    'FKClassName' => 'CRM_Contact_DAO_Contact',
                 ) ,
                 'household_name' => array(
                     'name' => 'household_name',
@@ -702,6 +827,7 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
                 'primary_contact_id' => array(
                     'name' => 'primary_contact_id',
                     'type' => CRM_Utils_Type::T_INT,
+                    'FKClassName' => 'CRM_Contact_DAO_Contact',
                 ) ,
                 'organization_name' => array(
                     'name' => 'organization_name',
@@ -740,9 +866,20 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
                     'export' => true,
                     'rule' => 'url',
                 ) ,
-                'employer_id' => array(
+                'current_employer_id' => array(
                     'name' => 'employer_id',
                     'type' => CRM_Utils_Type::T_INT,
+                    'title' => ts('Current Employer ID') ,
+                    'export' => true,
+                    'where' => 'civicrm_contact.employer_id',
+                    'headerPattern' => '',
+                    'dataPattern' => '',
+                    'FKClassName' => 'CRM_Contact_DAO_Contact',
+                ) ,
+                'is_deleted' => array(
+                    'name' => 'is_deleted',
+                    'type' => CRM_Utils_Type::T_BOOLEAN,
+                    'required' => true,
                 ) ,
             );
         }
@@ -754,7 +891,7 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
      * @access public
      * @return string
      */
-    function getTableName() 
+    function getTableName()
     {
         global $dbLocale;
         return self::$_tableName . $dbLocale;
@@ -765,7 +902,7 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
      * @access public
      * @return boolean
      */
-    function getLog() 
+    function getLog()
     {
         return self::$_log;
     }
@@ -775,17 +912,17 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &import($prefix = false) 
+    function &import($prefix = false)
     {
         if (!(self::$_import)) {
             self::$_import = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('import', $field)) {
                     if ($prefix) {
-                        self::$_import['contact'] = &$fields[$name];
+                        self::$_import['contact'] = & $fields[$name];
                     } else {
-                        self::$_import[$name] = &$fields[$name];
+                        self::$_import[$name] = & $fields[$name];
                     }
                 }
             }
@@ -798,17 +935,17 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &export($prefix = false) 
+    function &export($prefix = false)
     {
         if (!(self::$_export)) {
             self::$_export = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('export', $field)) {
                     if ($prefix) {
-                        self::$_export['contact'] = &$fields[$name];
+                        self::$_export['contact'] = & $fields[$name];
                     } else {
-                        self::$_export[$name] = &$fields[$name];
+                        self::$_export[$name] = & $fields[$name];
                     }
                 }
             }
@@ -820,10 +957,9 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
      *
      * @return array (reference)  the array of enum fields
      */
-    static function &getEnums() 
+    static function &getEnums()
     {
         static $enums = array(
-            'contact_type',
             'preferred_mail_format',
         );
         return $enums;
@@ -836,16 +972,11 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
      *
      * @return string  the display value of the enum
      */
-    static function tsEnum($field, $value) 
+    static function tsEnum($field, $value)
     {
         static $translations = null;
         if (!$translations) {
             $translations = array(
-                'contact_type' => array(
-                    'Individual' => ts('Individual') ,
-                    'Organization' => ts('Organization') ,
-                    'Household' => ts('Household') ,
-                ) ,
                 'preferred_mail_format' => array(
                     'Text' => ts('Text') ,
                     'HTML' => ts('HTML') ,
@@ -861,9 +992,9 @@ class CRM_Contact_DAO_Contact extends CRM_Core_DAO
      * @param array $values (reference)  the array up for enhancing
      * @return void
      */
-    static function addDisplayEnums(&$values) 
+    static function addDisplayEnums(&$values)
     {
-        $enumFields = &CRM_Contact_DAO_Contact::getEnums();
+        $enumFields = & CRM_Contact_DAO_Contact::getEnums();
         foreach($enumFields as $enum) {
             if (isset($values[$enum])) {
                 $values[$enum . '_display'] = CRM_Contact_DAO_Contact::tsEnum($enum, $values[$enum]);

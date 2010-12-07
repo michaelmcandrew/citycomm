@@ -1,15 +1,15 @@
 <?php
 /*
 +--------------------------------------------------------------------+
-| CiviCRM version 2.2                                                |
+| CiviCRM version 3.2                                                |
 +--------------------------------------------------------------------+
-| Copyright CiviCRM LLC (c) 2004-2009                                |
+| Copyright CiviCRM LLC (c) 2004-2010                                |
 +--------------------------------------------------------------------+
 | This file is a part of CiviCRM.                                    |
 |                                                                    |
 | CiviCRM is free software; you can copy, modify, and distribute it  |
 | under the terms of the GNU Affero General Public License           |
-| Version 3, 19 November 2007.                                       |
+| Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
 |                                                                    |
 | CiviCRM is distributed in the hope that it will be useful, but     |
 | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
 | See the GNU Affero General Public License for more details.        |
 |                                                                    |
 | You should have received a copy of the GNU Affero General Public   |
-| License along with this program; if not, contact CiviCRM LLC       |
+| License and the CiviCRM Licensing Exception along                  |
+| with this program; if not, contact CiviCRM LLC                     |
 | at info[AT]civicrm[DOT]org. If you have questions about the        |
 | GNU Affero General Public License or the licensing of CiviCRM,     |
 | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -26,7 +27,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -84,6 +85,12 @@ class CRM_Core_DAO_Menu extends CRM_Core_DAO
      * @var int unsigned
      */
     public $id;
+    /**
+     * Which Domain is this menu item for
+     *
+     * @var int unsigned
+     */
+    public $domain_id;
     /**
      * Path Name
      *
@@ -204,7 +211,7 @@ class CRM_Core_DAO_Menu extends CRM_Core_DAO
      * @access public
      * @return civicrm_menu
      */
-    function __construct() 
+    function __construct()
     {
         parent::__construct();
     }
@@ -214,10 +221,11 @@ class CRM_Core_DAO_Menu extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &links() 
+    function &links()
     {
         if (!(self::$_links)) {
             self::$_links = array(
+                'domain_id' => 'civicrm_domain:id',
                 'component_id' => 'civicrm_component:id',
             );
         }
@@ -229,7 +237,7 @@ class CRM_Core_DAO_Menu extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &fields() 
+    function &fields()
     {
         if (!(self::$_fields)) {
             self::$_fields = array(
@@ -237,6 +245,12 @@ class CRM_Core_DAO_Menu extends CRM_Core_DAO
                     'name' => 'id',
                     'type' => CRM_Utils_Type::T_INT,
                     'required' => true,
+                ) ,
+                'domain_id' => array(
+                    'name' => 'domain_id',
+                    'type' => CRM_Utils_Type::T_INT,
+                    'required' => true,
+                    'FKClassName' => 'CRM_Core_DAO_Domain',
                 ) ,
                 'path' => array(
                     'name' => 'path',
@@ -303,6 +317,7 @@ class CRM_Core_DAO_Menu extends CRM_Core_DAO
                 'component_id' => array(
                     'name' => 'component_id',
                     'type' => CRM_Utils_Type::T_INT,
+                    'FKClassName' => 'CRM_Core_DAO_Component',
                 ) ,
                 'is_active' => array(
                     'name' => 'is_active',
@@ -325,18 +340,21 @@ class CRM_Core_DAO_Menu extends CRM_Core_DAO
                     'type' => CRM_Utils_Type::T_INT,
                     'title' => ts('Weight') ,
                     'required' => true,
+                    'default' => '',
                 ) ,
                 'type' => array(
                     'name' => 'type',
                     'type' => CRM_Utils_Type::T_INT,
                     'title' => ts('Type') ,
                     'required' => true,
+                    'default' => '',
                 ) ,
                 'page_type' => array(
                     'name' => 'page_type',
                     'type' => CRM_Utils_Type::T_INT,
                     'title' => ts('Page Type') ,
                     'required' => true,
+                    'default' => '',
                 ) ,
                 'skipBreadcrumb' => array(
                     'name' => 'skipBreadcrumb',
@@ -353,7 +371,7 @@ class CRM_Core_DAO_Menu extends CRM_Core_DAO
      * @access public
      * @return string
      */
-    function getTableName() 
+    function getTableName()
     {
         return self::$_tableName;
     }
@@ -363,7 +381,7 @@ class CRM_Core_DAO_Menu extends CRM_Core_DAO
      * @access public
      * @return boolean
      */
-    function getLog() 
+    function getLog()
     {
         return self::$_log;
     }
@@ -373,17 +391,17 @@ class CRM_Core_DAO_Menu extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &import($prefix = false) 
+    function &import($prefix = false)
     {
         if (!(self::$_import)) {
             self::$_import = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('import', $field)) {
                     if ($prefix) {
-                        self::$_import['menu'] = &$fields[$name];
+                        self::$_import['menu'] = & $fields[$name];
                     } else {
-                        self::$_import[$name] = &$fields[$name];
+                        self::$_import[$name] = & $fields[$name];
                     }
                 }
             }
@@ -396,17 +414,17 @@ class CRM_Core_DAO_Menu extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &export($prefix = false) 
+    function &export($prefix = false)
     {
         if (!(self::$_export)) {
             self::$_export = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('export', $field)) {
                     if ($prefix) {
-                        self::$_export['menu'] = &$fields[$name];
+                        self::$_export['menu'] = & $fields[$name];
                     } else {
-                        self::$_export[$name] = &$fields[$name];
+                        self::$_export[$name] = & $fields[$name];
                     }
                 }
             }

@@ -5,16 +5,20 @@
  * 
  * Requirements: PHP5, SimpleXML
  *
- * Copyright (c) 2007 PHPIDS group (http://php-ids.org)
+ * Copyright (c) 2008 PHPIDS group (http://php-ids.org)
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; version 2 of the license.
+ * PHPIDS is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, version 3 of the License, or 
+ * (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
+ * PHPIDS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with PHPIDS. If not, see <http://www.gnu.org/licenses/>. 
  *
  * PHP version 5.1.6+
  * 
@@ -40,7 +44,7 @@ require_once 'IDS/Log/Interface.php';
  * @author    Christian Matthies <ch0012@gmail.com>
  * @author    Mario Heiderich <mario.heiderich@gmail.com>
  * @author    Lars Strojny <lars@strojny.net>
- * @copyright 2007 The PHPIDS Group
+ * @copyright 2007-2009 The PHPIDS Group
  * @license   http://www.gnu.org/licenses/lgpl.html LGPL
  * @version   Release: $Id:File.php 517 2007-09-15 15:04:13Z mario $
  * @link      http://php-ids.org/
@@ -100,19 +104,20 @@ class IDS_Log_File implements IDS_Log_Interface
      * instance for each file can be initiated.
      *
      * @param mixed $config IDS_Init or path to a file
+     * @param string the class name to use
      * 
      * @return object $this
      */
-    public static function getInstance($config) 
+    public static function getInstance($config, $classname = 'IDS_Log_File') 
     {
         if ($config instanceof IDS_Init) {
-            $logfile = $config->config['Logging']['path'];
+            $logfile = $config->getBasePath() . $config->config['Logging']['path'];
         } elseif (is_string($config)) {
             $logfile = $config;
         }
-
+        
         if (!isset(self::$instances[$logfile])) {
-            self::$instances[$logfile] = new IDS_Log_File($logfile);
+            self::$instances[$logfile] = new $classname($logfile);
         }
 
         return self::$instances[$logfile];
@@ -142,7 +147,7 @@ class IDS_Log_File implements IDS_Log_Interface
     protected function prepareData($data) 
     {
 
-        $format = '"%s",%s,%d,"%s","%s","%s"';
+        $format = '"%s",%s,%d,"%s","%s","%s","%s"';
 
         $attackedParameters = '';
         foreach ($data as $event) {
@@ -153,10 +158,11 @@ class IDS_Log_File implements IDS_Log_Interface
         $dataString = sprintf($format,
                               $this->ip,
                               date('c'),
-                              $data->getImpact(),
+                              $event->getImpact(),
                               join(' ', $data->getTags()),
                               trim($attackedParameters),
-                              urlencode($_SERVER['REQUEST_URI']));
+                              urlencode($_SERVER['REQUEST_URI']),
+                              $_SERVER['SERVER_ADDR']);
 
         return $dataString;
     }
@@ -215,9 +221,10 @@ class IDS_Log_File implements IDS_Log_Interface
     }
 }
 
-/*
+/**
  * Local variables:
  * tab-width: 4
  * c-basic-offset: 4
  * End:
+ * vim600: sw=4 ts=4 expandtab
  */

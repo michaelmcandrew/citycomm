@@ -1,15 +1,15 @@
 <?php
 /*
 +--------------------------------------------------------------------+
-| CiviCRM version 2.2                                                |
+| CiviCRM version 3.2                                                |
 +--------------------------------------------------------------------+
-| Copyright CiviCRM LLC (c) 2004-2009                                |
+| Copyright CiviCRM LLC (c) 2004-2010                                |
 +--------------------------------------------------------------------+
 | This file is a part of CiviCRM.                                    |
 |                                                                    |
 | CiviCRM is free software; you can copy, modify, and distribute it  |
 | under the terms of the GNU Affero General Public License           |
-| Version 3, 19 November 2007.                                       |
+| Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
 |                                                                    |
 | CiviCRM is distributed in the hope that it will be useful, but     |
 | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
 | See the GNU Affero General Public License for more details.        |
 |                                                                    |
 | You should have received a copy of the GNU Affero General Public   |
-| License along with this program; if not, contact CiviCRM LLC       |
+| License and the CiviCRM Licensing Exception along                  |
+| with this program; if not, contact CiviCRM LLC                     |
 | at info[AT]civicrm[DOT]org. If you have questions about the        |
 | GNU Affero General Public License or the licensing of CiviCRM,     |
 | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -26,7 +27,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -100,13 +101,13 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
     /**
      * Controls location of data storage in extended_data table.
      *
-     * @var enum('String', 'Int', 'Float', 'Money', 'Memo', 'Date', 'Boolean', 'StateProvince', 'Country', 'File', 'Link')
+     * @var enum('String', 'Int', 'Float', 'Money', 'Memo', 'Date', 'Boolean', 'StateProvince', 'Country', 'File', 'Link', 'ContactReference')
      */
     public $data_type;
     /**
      * HTML types plus several built-in extended types.
      *
-     * @var enum('Text', 'TextArea', 'Select', 'Multi-Select', 'Radio', 'CheckBox', 'Select Date', 'Select State/Province', 'Select Country', 'Multi-Select Country', 'Multi-Select State/Province', 'File', 'Link', 'RichTextEditor')
+     * @var enum('Text', 'TextArea', 'Select', 'Multi-Select', 'AdvMulti-Select', 'Radio', 'CheckBox', 'Select Date', 'Select State/Province', 'Select Country', 'Multi-Select Country', 'Multi-Select State/Province', 'File', 'Link', 'RichTextEditor', 'Autocomplete-Select')
      */
     public $html_type;
     /**
@@ -206,11 +207,17 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
      */
     public $end_date_years;
     /**
-     * which date part included in display
+     * date format for custom date
      *
      * @var string
      */
-    public $date_parts;
+    public $date_format;
+    /**
+     * time format for custom date
+     *
+     * @var int unsigned
+     */
+    public $time_format;
     /**
      *  Number of columns in Note Field
      *
@@ -241,7 +248,7 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
      * @access public
      * @return civicrm_custom_field
      */
-    function __construct() 
+    function __construct()
     {
         parent::__construct();
     }
@@ -251,7 +258,7 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &links() 
+    function &links()
     {
         if (!(self::$_links)) {
             self::$_links = array(
@@ -266,7 +273,7 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &fields() 
+    function &fields()
     {
         if (!(self::$_fields)) {
             self::$_fields = array(
@@ -279,6 +286,7 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
                     'name' => 'custom_group_id',
                     'type' => CRM_Utils_Type::T_INT,
                     'required' => true,
+                    'FKClassName' => 'CRM_Core_DAO_CustomGroup',
                 ) ,
                 'label' => array(
                     'name' => 'label',
@@ -292,12 +300,14 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
                     'type' => CRM_Utils_Type::T_ENUM,
                     'title' => ts('Data Type') ,
                     'required' => true,
+                    'enumValues' => 'String, Int, Float, Money, Memo, Date, Boolean, StateProvince, Country, File, Link, ContactReference',
                 ) ,
                 'html_type' => array(
                     'name' => 'html_type',
                     'type' => CRM_Utils_Type::T_ENUM,
                     'title' => ts('Html Type') ,
                     'required' => true,
+                    'enumValues' => 'Text, TextArea, Select, Multi-Select, AdvMulti-Select, Radio, CheckBox, Select Date, Select State/Province, Select Country, Multi-Select Country, Multi-Select State/Province, File, Link, RichTextEditor, Autocomplete-Select',
                 ) ,
                 'default_value' => array(
                     'name' => 'default_value',
@@ -323,6 +333,7 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
                     'type' => CRM_Utils_Type::T_INT,
                     'title' => ts('Weight') ,
                     'required' => true,
+                    'default' => '',
                 ) ,
                 'help_pre' => array(
                     'name' => 'help_pre',
@@ -383,12 +394,17 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
                     'type' => CRM_Utils_Type::T_INT,
                     'title' => ts('End Date Years') ,
                 ) ,
-                'date_parts' => array(
-                    'name' => 'date_parts',
+                'date_format' => array(
+                    'name' => 'date_format',
                     'type' => CRM_Utils_Type::T_STRING,
-                    'title' => ts('Date Parts') ,
-                    'maxlength' => 255,
-                    'size' => CRM_Utils_Type::HUGE,
+                    'title' => ts('Date Format') ,
+                    'maxlength' => 64,
+                    'size' => CRM_Utils_Type::BIG,
+                ) ,
+                'time_format' => array(
+                    'name' => 'time_format',
+                    'type' => CRM_Utils_Type::T_INT,
+                    'title' => ts('Time Format') ,
                 ) ,
                 'note_columns' => array(
                     'name' => 'note_columns',
@@ -421,7 +437,7 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
      * @access public
      * @return string
      */
-    function getTableName() 
+    function getTableName()
     {
         global $dbLocale;
         return self::$_tableName . $dbLocale;
@@ -432,7 +448,7 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
      * @access public
      * @return boolean
      */
-    function getLog() 
+    function getLog()
     {
         return self::$_log;
     }
@@ -442,17 +458,17 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &import($prefix = false) 
+    function &import($prefix = false)
     {
         if (!(self::$_import)) {
             self::$_import = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('import', $field)) {
                     if ($prefix) {
-                        self::$_import['custom_field'] = &$fields[$name];
+                        self::$_import['custom_field'] = & $fields[$name];
                     } else {
-                        self::$_import[$name] = &$fields[$name];
+                        self::$_import[$name] = & $fields[$name];
                     }
                 }
             }
@@ -465,17 +481,17 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &export($prefix = false) 
+    function &export($prefix = false)
     {
         if (!(self::$_export)) {
             self::$_export = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('export', $field)) {
                     if ($prefix) {
-                        self::$_export['custom_field'] = &$fields[$name];
+                        self::$_export['custom_field'] = & $fields[$name];
                     } else {
-                        self::$_export[$name] = &$fields[$name];
+                        self::$_export[$name] = & $fields[$name];
                     }
                 }
             }
@@ -487,7 +503,7 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
      *
      * @return array (reference)  the array of enum fields
      */
-    static function &getEnums() 
+    static function &getEnums()
     {
         static $enums = array(
             'data_type',
@@ -503,7 +519,7 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
      *
      * @return string  the display value of the enum
      */
-    static function tsEnum($field, $value) 
+    static function tsEnum($field, $value)
     {
         static $translations = null;
         if (!$translations) {
@@ -520,12 +536,14 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
                     'Country' => ts('Country') ,
                     'File' => ts('File') ,
                     'Link' => ts('Link') ,
+                    'ContactReference' => ts('ContactReference') ,
                 ) ,
                 'html_type' => array(
                     'Text' => ts('Text') ,
                     'TextArea' => ts('TextArea') ,
                     'Select' => ts('Select') ,
                     'Multi-Select' => ts('Multi-Select') ,
+                    'AdvMulti-Select' => ts('AdvMulti-Select') ,
                     'Radio' => ts('Radio') ,
                     'CheckBox' => ts('CheckBox') ,
                     'Select Date' => ts('Select Date') ,
@@ -536,6 +554,7 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
                     'File' => ts('File') ,
                     'Link' => ts('Link') ,
                     'RichTextEditor' => ts('RichTextEditor') ,
+                    'Autocomplete-Select' => ts('Autocomplete-Select') ,
                 ) ,
             );
         }
@@ -547,9 +566,9 @@ class CRM_Core_DAO_CustomField extends CRM_Core_DAO
      * @param array $values (reference)  the array up for enhancing
      * @return void
      */
-    static function addDisplayEnums(&$values) 
+    static function addDisplayEnums(&$values)
     {
-        $enumFields = &CRM_Core_DAO_CustomField::getEnums();
+        $enumFields = & CRM_Core_DAO_CustomField::getEnums();
         foreach($enumFields as $enum) {
             if (isset($values[$enum])) {
                 $values[$enum . '_display'] = CRM_Core_DAO_CustomField::tsEnum($enum, $values[$enum]);

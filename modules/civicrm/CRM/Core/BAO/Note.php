@@ -2,15 +2,15 @@
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 2.2                                                |
+ | CiviCRM version 3.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2009                                |
+ | Copyright CiviCRM LLC (c) 2004-2010                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -18,7 +18,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,7 +29,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -38,7 +39,8 @@ require_once 'CRM/Core/DAO/Note.php';
 /**
  * BAO object for crm_note table
  */
-class CRM_Core_BAO_Note extends CRM_Core_DAO_Note {
+class CRM_Core_BAO_Note extends CRM_Core_DAO_Note 
+{
 
     /**
      * const the max number of notes we display at any given time
@@ -56,7 +58,8 @@ class CRM_Core_BAO_Note extends CRM_Core_DAO_Note {
      * @access public
      * @static
      */
-    static function getNoteText( $id ) {
+    static function getNoteText( $id ) 
+    {
         return CRM_Core_DAO::getFieldValue( 'CRM_Core_DAO_Note', $id, 'note' );
     }
     
@@ -70,7 +73,8 @@ class CRM_Core_BAO_Note extends CRM_Core_DAO_Note {
      * @access public
      * @static
      */
-    static function getNoteSubject( $id ) {
+    static function getNoteSubject( $id ) 
+    {
         return CRM_Core_DAO::getFieldValue( 'CRM_Core_DAO_Note', $id, 'subject' );
     }
 
@@ -87,27 +91,32 @@ class CRM_Core_BAO_Note extends CRM_Core_DAO_Note {
      * @access public
      * @static
      */
-    static function &add( &$params , $ids) 
+    static function &add( &$params , $ids ) 
     {
         $dataExists = self::dataExists( $params );
         if ( ! $dataExists ) {
             return CRM_Core_DAO::$_nullObject;
         }
 
-        $note =& new CRM_Core_BAO_Note( );
+        $note = new CRM_Core_BAO_Note( );
         
-        $params['modified_date']  = date("Ymd");
+        if ( !isset($params['modified_date']) ) {
+            $params['modified_date'] = date("Ymd");
+        }
         
         $note->copyValues( $params );
         if ( ! $params['contact_id'] ) {
-            if( $params['entity_table'] =='civicrm_contact' ) {
+            if ( $params['entity_table'] =='civicrm_contact' ) {
                 $note->contact_id = $params['entity_id'];   
-            }else {
+            } else {
                 CRM_Core_Error::statusBounce(ts('We could not find your logged in user ID'));
             }
         }
-
-        $note->id = CRM_Utils_Array::value( 'id', $ids );
+        
+        if ( CRM_Utils_Array::value( 'id', $ids ) ) {
+            $note->id = CRM_Utils_Array::value( 'id', $ids );
+        }
+        
         $note->save( );
 
         if ( $note->entity_table == 'civicrm_contact' ) {
@@ -115,6 +124,18 @@ class CRM_Core_BAO_Note extends CRM_Core_DAO_Note {
             CRM_Core_BAO_Log::register( $note->entity_id,
                                         'civicrm_note',
                                         $note->id );
+            require_once 'CRM/Contact/BAO/Contact.php';
+            $displayName = CRM_Contact_BAO_Contact::displayName( $note->entity_id );
+
+            // add the recently created Note
+            require_once 'CRM/Utils/Recent.php';
+            CRM_Utils_Recent::add( $displayName . ' - ' . $note->subject,
+                                   CRM_Utils_System::url( 'civicrm/contact/view/note', 
+                                                          "reset=1&action=view&cid={$note->entity_id}&id={$note->id}&context=home" ),
+                                   $note->id,
+                                   'Note',
+                                   $note->entity_id,
+                                   $displayName );
         }
 
         return $note;
@@ -151,9 +172,12 @@ class CRM_Core_BAO_Note extends CRM_Core_DAO_Note {
      * @access public
      * @static
      */
-    static function &getValues( &$params, &$values, $numNotes = self::MAX_NOTES ) {
-        $note =& new CRM_Core_BAO_Note( );
-       
+    static function &getValues( &$params, &$values, $numNotes = self::MAX_NOTES ) 
+    {
+        if ( empty( $params ) ) {
+            return null;
+        }
+        $note = new CRM_Core_BAO_Note( );
         $note->entity_id    = $params['contact_id'] ;        
         $note->entity_table = 'civicrm_contact';
 
@@ -165,13 +189,11 @@ class CRM_Core_BAO_Note extends CRM_Core_DAO_Note {
         $note->limit( $numNotes );
         $note->find();
 
-        $notes       = array( );
+        $notes = array( );
         $count = 0;
         while ( $note->fetch() ) {
             $values['note'][$note->id] = array();
-            
             CRM_Core_DAO::storeValues( $note, $values['note'][$note->id] );
-
             $notes[] = $note;
 
             $count++;
@@ -184,7 +206,6 @@ class CRM_Core_BAO_Note extends CRM_Core_DAO_Note {
         return $notes;
     }
 
-
     /**
      * Function to delete the notes
      * 
@@ -195,12 +216,22 @@ class CRM_Core_BAO_Note extends CRM_Core_DAO_Note {
      * @static
      * 
      */
-    static function del ( $id ) {
+    static function del( $id ) 
+    {
         $return   = null;
-        $note     =& new CRM_Core_DAO_Note( );
+        $note     = new CRM_Core_DAO_Note( );
         $note->id = $id;
         $return   = $note->delete();
-        CRM_Core_Session::setStatus( ts('Selected Note has been Deleted Successfuly.') );
+        CRM_Core_Session::setStatus( ts('Selected Note has been Deleted Successfully.') );
+        
+        // delete the recently created Note
+        require_once 'CRM/Utils/Recent.php';
+        $noteRecent = array(
+                        'id'   => $id,
+                        'type' => 'Note'
+                        );
+        CRM_Utils_Recent::del( $noteRecent );
+
         return $return;
     }
 
@@ -214,16 +245,16 @@ class CRM_Core_BAO_Note extends CRM_Core_DAO_Note {
      * @access public
      * @static
      */
-    public static function deleteContact($id)
+    public static function deleteContact( $id )
     {
         // need to delete for both entity_id
-        $dao =& new CRM_Core_DAO_Note();
+        $dao = new CRM_Core_DAO_Note();
         $dao->entity_table = 'civicrm_contact';
         $dao->entity_id   = $id;
         $dao->delete();
 
         // and the creator contact id
-        $dao =& new CRM_Core_DAO_Note();
+        $dao = new CRM_Core_DAO_Note();
         $dao->contact_id = $id;        
         $dao->delete();
     }
@@ -238,7 +269,7 @@ class CRM_Core_BAO_Note extends CRM_Core_DAO_Note {
      * @access public
      * @static
      */
-    public static function &getNote( $id, $entityTable = 'civicrm_relationship')
+    public static function &getNote( $id, $entityTable = 'civicrm_relationship' )
     {
         $viewNote = array();
         
@@ -257,5 +288,19 @@ ORDER BY modified_date desc";
         }
         return $viewNote;
     }
+    
+    /**
+     * Function to get log record count for a Contact
+     *
+     * @param int $contactId Contact ID
+     * 
+     * @return int count of log records
+     * @access public
+     * @static
+     */
+     static function getContactNoteCount( $contactID ) {
+         $query = "SELECT count(*) FROM civicrm_note 
+                   WHERE civicrm_note.entity_table = 'civicrm_contact' AND civicrm_note.entity_id = {$contactID}";
+         return CRM_Core_DAO::singleValueQuery( $query );
+     }
 }
-

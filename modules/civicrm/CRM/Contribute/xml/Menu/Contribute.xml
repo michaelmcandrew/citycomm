@@ -3,11 +3,20 @@
 <menu>
   <item>
      <path>civicrm/contribute</path>
-     <title>CiviContribute</title>
+     <title>CiviContribute Dashboard</title>
      <page_callback>CRM_Contribute_Page_DashBoard</page_callback>
      <access_arguments>access CiviContribute</access_arguments>
      <page_type>1</page_type>
      <weight>500</weight>
+     <component>CiviContribute</component>
+  </item>
+  <item>
+     <path>civicrm/contribute/add</path>
+     <title>New Contribution</title>
+     <page_callback>CRM_Contribute_Page_Tab</page_callback>
+     <path_arguments>action=add</path_arguments>
+     <access_arguments>access CiviContribute</access_arguments>
+     <page_type>1</page_type>
      <component>CiviContribute</component>
   </item>
  <item>
@@ -34,6 +43,12 @@
      <adminGroup>CiviContribute</adminGroup>
      <icon>admin/small/online_contribution_pages.png</icon>
      <weight>360</weight>
+  </item>
+  <item>
+     <path>civicrm/admin/contribute/add</path>
+     <title>New Contribution Page</title>
+     <page_callback>CRM_Contribute_Page_ContributionPage</page_callback>
+     <path_arguments>action=add</path_arguments>
   </item>
   <item>
      <path>civicrm/admin/pcp</path>
@@ -105,7 +120,7 @@
      <path>civicrm/contribute/import</path>
      <title>Import Contributions</title>
      <page_callback>CRM_Contribute_Import_Controller</page_callback>
-     <access_arguments>administer CiviCRM,access CiviContribute</access_arguments>
+     <access_arguments>access CiviContribute,edit contributions</access_arguments>
      <page_type>1</page_type>
      <weight>520</weight>
   </item>

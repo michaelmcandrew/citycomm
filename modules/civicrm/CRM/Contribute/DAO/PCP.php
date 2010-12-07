@@ -1,15 +1,15 @@
 <?php
 /*
 +--------------------------------------------------------------------+
-| CiviCRM version 2.2                                                |
+| CiviCRM version 3.2                                                |
 +--------------------------------------------------------------------+
-| Copyright CiviCRM LLC (c) 2004-2009                                |
+| Copyright CiviCRM LLC (c) 2004-2010                                |
 +--------------------------------------------------------------------+
 | This file is a part of CiviCRM.                                    |
 |                                                                    |
 | CiviCRM is free software; you can copy, modify, and distribute it  |
 | under the terms of the GNU Affero General Public License           |
-| Version 3, 19 November 2007.                                       |
+| Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
 |                                                                    |
 | CiviCRM is distributed in the hope that it will be useful, but     |
 | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
 | See the GNU Affero General Public License for more details.        |
 |                                                                    |
 | You should have received a copy of the GNU Affero General Public   |
-| License along with this program; if not, contact CiviCRM LLC       |
+| License and the CiviCRM Licensing Exception along                  |
+| with this program; if not, contact CiviCRM LLC                     |
 | at info[AT]civicrm[DOT]org. If you have questions about the        |
 | GNU Affero General Public License or the licensing of CiviCRM,     |
 | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -26,7 +27,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2009
+ * @copyright CiviCRM LLC (c) 2004-2010
  * $Id$
  *
  */
@@ -139,6 +140,12 @@ class CRM_Contribute_DAO_PCP extends CRM_Core_DAO
      */
     public $goal_amount;
     /**
+     * 3 character string, value from config setting or input via user.
+     *
+     * @var string
+     */
+    public $currency;
+    /**
      *
      * @var string
      */
@@ -155,7 +162,7 @@ class CRM_Contribute_DAO_PCP extends CRM_Core_DAO
      * @access public
      * @return civicrm_pcp
      */
-    function __construct() 
+    function __construct()
     {
         parent::__construct();
     }
@@ -165,7 +172,7 @@ class CRM_Contribute_DAO_PCP extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &links() 
+    function &links()
     {
         if (!(self::$_links)) {
             self::$_links = array(
@@ -181,7 +188,7 @@ class CRM_Contribute_DAO_PCP extends CRM_Core_DAO
      * @access public
      * @return array
      */
-    function &fields() 
+    function &fields()
     {
         if (!(self::$_fields)) {
             self::$_fields = array(
@@ -196,6 +203,7 @@ class CRM_Contribute_DAO_PCP extends CRM_Core_DAO
                     'type' => CRM_Utils_Type::T_INT,
                     'title' => ts('Contact ID') ,
                     'required' => true,
+                    'FKClassName' => 'CRM_Contact_DAO_Contact',
                 ) ,
                 'status_id' => array(
                     'name' => 'status_id',
@@ -209,16 +217,19 @@ class CRM_Contribute_DAO_PCP extends CRM_Core_DAO
                     'title' => ts('Personal Campaign Page Title') ,
                     'maxlength' => 255,
                     'size' => CRM_Utils_Type::HUGE,
+                    'default' => 'UL',
                 ) ,
                 'intro_text' => array(
                     'name' => 'intro_text',
                     'type' => CRM_Utils_Type::T_TEXT,
                     'title' => ts('Intro Text') ,
+                    'default' => 'UL',
                 ) ,
                 'page_text' => array(
                     'name' => 'page_text',
                     'type' => CRM_Utils_Type::T_TEXT,
                     'title' => ts('Page Text') ,
+                    'default' => 'UL',
                 ) ,
                 'donate_link_text' => array(
                     'name' => 'donate_link_text',
@@ -226,11 +237,13 @@ class CRM_Contribute_DAO_PCP extends CRM_Core_DAO
                     'title' => ts('Donate Link Text') ,
                     'maxlength' => 255,
                     'size' => CRM_Utils_Type::HUGE,
+                    'default' => 'UL',
                 ) ,
                 'contribution_page_id' => array(
                     'name' => 'contribution_page_id',
                     'type' => CRM_Utils_Type::T_INT,
                     'required' => true,
+                    'FKClassName' => 'CRM_Contribute_DAO_ContributionPage',
                 ) ,
                 'is_thermometer' => array(
                     'name' => 'is_thermometer',
@@ -245,12 +258,21 @@ class CRM_Contribute_DAO_PCP extends CRM_Core_DAO
                     'type' => CRM_Utils_Type::T_MONEY,
                     'title' => ts('Goal Amount') ,
                 ) ,
+                'currency' => array(
+                    'name' => 'currency',
+                    'type' => CRM_Utils_Type::T_STRING,
+                    'title' => ts('Currency') ,
+                    'required' => true,
+                    'maxlength' => 3,
+                    'size' => CRM_Utils_Type::FOUR,
+                ) ,
                 'referer' => array(
                     'name' => 'referer',
                     'type' => CRM_Utils_Type::T_STRING,
                     'title' => ts('Referer') ,
                     'maxlength' => 255,
                     'size' => CRM_Utils_Type::HUGE,
+                    'default' => 'UL',
                 ) ,
                 'is_active' => array(
                     'name' => 'is_active',
@@ -266,7 +288,7 @@ class CRM_Contribute_DAO_PCP extends CRM_Core_DAO
      * @access public
      * @return string
      */
-    function getTableName() 
+    function getTableName()
     {
         return self::$_tableName;
     }
@@ -276,7 +298,7 @@ class CRM_Contribute_DAO_PCP extends CRM_Core_DAO
      * @access public
      * @return boolean
      */
-    function getLog() 
+    function getLog()
     {
         return self::$_log;
     }
@@ -286,17 +308,17 @@ class CRM_Contribute_DAO_PCP extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &import($prefix = false) 
+    function &import($prefix = false)
     {
         if (!(self::$_import)) {
             self::$_import = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('import', $field)) {
                     if ($prefix) {
-                        self::$_import['pcp'] = &$fields[$name];
+                        self::$_import['pcp'] = & $fields[$name];
                     } else {
-                        self::$_import[$name] = &$fields[$name];
+                        self::$_import[$name] = & $fields[$name];
                     }
                 }
             }
@@ -309,17 +331,17 @@ class CRM_Contribute_DAO_PCP extends CRM_Core_DAO
      * @access public
      * return array
      */
-    function &export($prefix = false) 
+    function &export($prefix = false)
     {
         if (!(self::$_export)) {
             self::$_export = array();
-            $fields = &self::fields();
+            $fields = & self::fields();
             foreach($fields as $name => $field) {
                 if (CRM_Utils_Array::value('export', $field)) {
                     if ($prefix) {
-                        self::$_export['pcp'] = &$fields[$name];
+                        self::$_export['pcp'] = & $fields[$name];
                     } else {
-                        self::$_export[$name] = &$fields[$name];
+                        self::$_export[$name] = & $fields[$name];
                     }
                 }
             }
