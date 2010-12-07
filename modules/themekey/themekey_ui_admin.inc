@@ -1,19 +1,38 @@
 <?php
-// $Id: themekey_ui_admin.inc,v 1.1.2.4 2009/03/29 11:42:47 profix898 Exp $
+// $Id: themekey_ui_admin.inc,v 1.6.2.1 2010/07/21 15:16:09 mkalkbrenner Exp $
 
+/**
+ * @file
+ * Adds options to ThemeKey's adminstration back end and alters drupal forms
+ * to add theme select boxes.
+ *
+ * @see themekey_ui.module
+ *
+ * @author Markus Kalkbrenner | Cocomore AG
+ *   @see http://drupal.org/user/124705
+ *
+ * @author profix898
+ *   @see http://drupal.org/user/35192
+ */
+
+require_once(drupal_get_path('module', 'themekey') .'/themekey_base.inc');
 require_once(drupal_get_path('module', 'themekey_ui') .'/themekey_ui_helper.inc');
 
 /**
- * Function _themekey_ui_settings_form().
+ * ThemeKey UI settings form
+ *
+ * @see themekey_ui_settings_form_submit()
+ *
+ * @ingroup forms
  */
-function _themekey_ui_settings_form() {
+function themekey_ui_settings_form() {
   $form['themekey_ui'] = array(
     '#type' => 'fieldset',
     '#title' => t('UI Settings'),
     '#collapsible' => FALSE,
     '#collapsed' => FALSE
   );
-  
+
   if (module_exists('path')) {
     $form['themekey_ui']['themekey_ui_pathalias'] = array(
       '#type' => 'checkbox',
@@ -33,12 +52,6 @@ function _themekey_ui_settings_form() {
   if ($nodeform) {
     $form['themekey_ui']['content_type'] = array(
       '#type' => 'fieldset',
-      '#title' => t('Content Types'),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE
-    );
-    $form['themekey_ui']['content_type'] = array(
-      '#type' => 'fieldset',
       '#title' => t('Show \'Theme\' option for nodes of type'),
       '#collapsible' => TRUE,
       '#collapsed' => FALSE,
@@ -55,20 +68,29 @@ function _themekey_ui_settings_form() {
       );
     }
   }
-  
+
+  $form['themekey_ui']['themekey_ui_author'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Show theme option in user profile'),
+    '#default_value' => variable_get('themekey_ui_author', 0),
+    '#description' => t('Assign themes from user profile. All nodes created by a user will be shown to all visitors using the theme he selected in his profile.')
+  );
+
   $form['buttons']['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save configuration'),
-    '#submit' => array('_themekey_ui_settings_submit')
   );
-  
+
   return $form;
 }
 
+
 /**
- * Function _themekey_ui_settings_submit().
+ * Form submission handler for themekey_ui_settings_form().
+ *
+ * @see themekey_ui_settings_form()
  */
-function _themekey_ui_settings_submit($form, &$form_state) {
+function themekey_ui_settings_form_submit($form, &$form_state) {
   //
   foreach ($form_state['values'] as $key => $value) {
     $pos = strpos($key, 'themekey_ui_');
@@ -77,102 +99,140 @@ function _themekey_ui_settings_submit($form, &$form_state) {
     }
   }
 
+  themekey_update_static_rule('themekey_ui:node_triggers_theme', $form_state['values']['themekey_ui_nodeform']);
+  themekey_update_static_rule('themekey_ui:node_author_triggers_theme', $form_state['values']['themekey_ui_author']);
+
   drupal_set_message(t('The configuration options have been saved.'));
 }
 
+
 /**
- * Function _themekey_ui_nodeform().
+ * Adds theme selector to a form
+ *
+ * @see system_theme_select_form()
+ *
+ * @param $form
+ *   form array
+ *
+ * @param $title
+ *   title as string
+ *
+ * @param $description
+ *   description as string
+ *
+ * @param $weight
+ *   integer
+ *
+ * @param $collapsed
+ *   boolean
  */
-function _themekey_ui_nodeform(&$form, &$form_state) {
-  $form['nodeform_theme'] = array(
+function themekey_ui_theme_select_form(&$form, $title, $description, $default = 'default', $weight = NULL, $collapsed = TRUE) {
+  $themes = list_themes();
+  $theme_options = themekey_theme_options();
+
+  $form['themekey_ui_themes'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Theme'),
+    '#title' => $title,
+    '#description' => $description,
     '#collapsible' => TRUE,
-    '#collapsed' => TRUE
+    '#collapsed' => $collapsed,
+    '#theme' => 'themekey_ui_theme_select_form'
   );
-  $theme = 'default';
-  if (isset($form['#node']->nid)) {
-    $theme = variable_get('themekey_nodeaspath', 0) ? themekey_ui_get_path_theme('node/'. $form['#node']->nid) : themekey_ui_get_node_theme($form['#node']->nid);
-  }
-  $form['nodeform_theme']['theme'] = array(
-    '#type' => 'select',
-    '#default_value' => $theme,
-    '#options' => _themekey_theme_options(),
-    '#description' => t('Theme to be assigned to current path/node'),
-  );
-  $form['nodeform_theme']['themekey_submit'] = array(
-    '#type' => 'value',
-    '#value' => '_themekey_ui_nodeform_submit'
-  );
-  $form['#submit'][] = 'themekey_ui_form_submit';
-}
 
-/**
- * Function _themekey_ui_nodeapi().
- */
-function _themekey_ui_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
-  switch ($op) {
-    case 'insert':
-    case 'update':
-      if (isset($node->theme) && $node->theme != 'default') {
-        if (variable_get('themekey_nodeaspath', 0))
-          themekey_ui_set_path_theme('node/'. $node->nid, $node->theme);
-        else
-          themekey_ui_set_node_theme($node->nid, $node->theme);
+
+  $form['themekey_ui_themes']['default']['screenshot'] = array();
+  $form['themekey_ui_themes']['default']['description'] = array('#type' => 'item', '#value' => t("don't switch the theme"));
+
+  $options = array('default' => '');
+
+  foreach ($themes as $info) {
+    if (!array_key_exists($info->name, $theme_options)) {
+      continue;
+    }
+
+    $options[$info->name] = '';
+
+    $screenshot = NULL;
+    $theme_key = $info->name;
+    while ($theme_key) {
+      if (file_exists($themes[$theme_key]->info['screenshot'])) {
+        $screenshot = $themes[$theme_key]->info['screenshot'];
+        break;
       }
-      else {
-        if (variable_get('themekey_nodeaspath', 0))
-          themekey_ui_del_path_theme('node/'. $node->nid);
-        else
-          themekey_ui_del_node_theme($node->nid);
-      }
-      break;
-    case 'delete':
-      if (variable_get('themekey_nodeaspath', 0))
-        themekey_ui_del_path_theme('node/'. $node->nid);
-      else
-        themekey_ui_del_node_theme($node->nid);
-      break;
+      $theme_key = isset($themes[$theme_key]->info['base theme']) ? $themes[$theme_key]->info['base theme'] : NULL;
+    }
+
+    $screenshot = $screenshot ? theme('image', $screenshot, t('Screenshot for %theme theme', array('%theme' => $info->name)), '', array('class' => 'screenshot'), FALSE) : t('no screenshot');
+
+    $form['themekey_ui_themes'][$info->name]['screenshot'] = array('#value' => $screenshot);
+    $form['themekey_ui_themes'][$info->name]['description'] = array('#type' => 'item', '#title' => $info->info['name'], '#value' => dirname($info->filename));
+  }
+
+  $form['themekey_ui_themes']['themekey_ui_theme'] = array('#type' => 'radios', '#options' => $options, '#default_value' => $default);
+
+  if (!is_null($weight)) {
+    $form['themekey_ui_themes']['#weight'] = $weight;
   }
 }
 
+
 /**
- * Function _themekey_ui_pathalias().
+ * Adds theme select box to url alias form
+ *
+ * @see path_admin_form()
+ * @see themekey_ui_pathalias_submit()
+ *
+ * @ingroup forms
  */
-function _themekey_ui_pathalias(&$form, &$form_state) {
+function themekey_ui_pathalias(&$form) {
   if (!isset($form['#alias'])) {
     return;
   }
 
-  $pathalias_form['pathalias_theme']['theme'] = array(
-    '#type' => 'select',
-    '#title' => t('Theme'),
-    '#default_value' => themekey_ui_get_path_theme($form['#alias']['src']),
-    '#options' => _themekey_theme_options(),
-    '#description' => t('Theme to be assigned to current path'),
-  );
-  $pathalias_form['pathalias_theme']['themekey_submit'] = array(
+  list($id, $theme) = themekey_ui_get_path_theme($form['#alias']['dst']);
+
+  themekey_ui_theme_select_form($form, t('Theme configuration'), t('Select a theme that will be used whenever content will be requested using this path alias.'), $theme, $form['submit']['weight'] - 1);
+
+  $form['themekey_ui_themes']['themekey_rule_id'] = array(
     '#type' => 'value',
-    '#value' => '_themekey_ui_pathalias_submit'
+    '#value' => $id,
   );
-  array_splice($form, 4, 0, $pathalias_form);
-  array_unshift($form['#submit'], 'themekey_ui_form_submit');
+
+  array_unshift($form['#submit'], 'themekey_ui_pathalias_submit');
 }
 
+
 /**
- * Function _themekey_ui_pathalias_submit().
+ * Form submission handler for themekey_ui_pathalias().
+ *
+ * @see themekey_ui_pathalias()
  */
-function _themekey_ui_pathalias_submit($form, &$form_state) {
-  if (!isset($form_state['values']['theme'])) {
-    themekey_ui_del_path_theme($form['#alias']['src']);
+function themekey_ui_pathalias_submit($form, &$form_state) {
+  if ((empty($form_state['values']['themekey_ui_theme']) || 'default' == $form_state['values']['themekey_ui_theme']) && $form_state['values']['themekey_rule_id']) {
+    themekey_ui_del_path_theme($form_state['values']['themekey_rule_id']);
   }
-  else {
-    themekey_ui_set_path_theme($form['#alias']['src'], $form_state['values']['theme']);
+  elseif (!empty($form_state['values']['themekey_ui_theme']) && 'default' != $form_state['values']['themekey_ui_theme']) {
+    themekey_ui_set_path_theme($form_state['values']['dst'], $form_state['values']['themekey_ui_theme'], $form_state['values']['themekey_rule_id']);
+  }
+
+  if ($form['src']['#default_value'] == $form_state['values']['src'] &&
+      $form['dst']['#default_value'] == $form_state['values']['dst'] &&
+      $form['themekey_ui_themes']['themekey_ui_theme']['#default_value'] != $form_state['values']['themekey_ui_theme']) {
+    // only theme changed => clear page cache
+    // REVIEW this might be a performance issue on large sites
+    cache_clear_all('%' . $form_state['values']['dst'], 'cache_page', TRUE);
   }
 }
 
+
 /**
- * Function theme_themekey_ui_table().
+ * Formats a table with checkboxes used by ThemeKey UI settings form.
+ *
+ * @param $form
+ *   array() containing form elements to be
+ *   formatted as table
+ *
+ * @ingroup themeable
  */
 function theme_themekey_ui_table($form) {
   $header = isset($form['#header']) ? $form['#header'] : array();
@@ -193,4 +253,35 @@ function theme_themekey_ui_table($form) {
   }
 
   return count($rows) ? theme('table', $header, $rows, $attributes) : '';
+}
+
+
+/**
+ * Theme the theme select form.
+ *
+ * @see theme_system_theme_select_form()
+ *
+ * @param $form
+ *   An associative array containing the structure of the form.
+ *
+ * @ingroup themeable
+ */
+function theme_themekey_ui_theme_select_form($form) {
+  $rows = array();
+
+  foreach (element_children($form) as $key) {
+    $row = array();
+    if (isset($form[$key]['description']) && is_array($form[$key]['description'])) {
+      $row[] = drupal_render($form[$key]['screenshot']);
+      $row[] = drupal_render($form[$key]['description']);
+      $row[] = drupal_render($form['themekey_ui_theme'][$key]);
+    }
+    $rows[] = $row;
+  }
+
+  if (!empty($rows)) {
+    $header = array(t('Screenshot'), t('Name'), t('Selected'));
+    $output = theme('table', $header, $rows);
+    return $output;
+  }
 }
