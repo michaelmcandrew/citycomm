@@ -1,5 +1,4 @@
 <?php
-// $Id: themekey_ui.module,v 1.6.2.3 2010/08/16 14:18:29 mkalkbrenner Exp $
 
 /**
  * @file
@@ -9,9 +8,9 @@
  * to assign a theme to a node.
  *
  * ThemeKey UI adds a theme option to the 'URL aliases' administration
- * if module "Path" is enabled.
+ * if the "Path" module is enabled.
  *
- * ThemeKey UI adds a form element to user profile for theming all
+ * ThemeKey UI adds a form element to the user profile for themeing all
  * nodes created by this user.
  *
  * @see themekey.module
@@ -27,7 +26,7 @@
 /**
  * Implements hook_themekey_properties()
  *
- * Provides additional properties for module ThemeKey:
+ * Provides additional properties for the ThemeKey module:
  *   themekey_ui:node_triggers_theme
  *
  * @return
@@ -39,14 +38,14 @@ function themekey_ui_themekey_properties() {
   $attributes = array();
 
   $attributes['themekey_ui:node_triggers_theme'] = array(
-    'description' => t("Property themekey_ui:node_triggers_theme could not be selected from the property drop down. You get this static property by activating !link. Afterwards you can move the property to any position in the rule chain. When done it triggers the switch to the theme assigned to the current node using ThemeKey UI.",
+    'description' => t("Property themekey_ui:node_triggers_theme could not be selected from the property drop down. You get this static property by activating !link. Afterwards, you can move the property to any position in the rule chain. When done, it triggers the switch to the theme assigned to the current node using ThemeKey UI.",
       array('!link' => l(t('Show theme option in create/edit node forms'), 'admin/settings/themekey/settings/ui'))),
     'page cache' => THEMEKEY_PAGECACHE_SUPPORTED,
     'static' => TRUE,
   );
 
   $attributes['themekey_ui:node_author_triggers_theme'] = array(
-    'description' => t("Property themekey_ui:node_author_triggers_theme could not be selected from the property drop down. You get this static property by activating !link. Afterwards you can move the property to any position in the rule chain. When done it triggers the switch to the theme the author selected for his nodes in his user profile.",
+    'description' => t("Property themekey_ui:node_author_triggers_theme could not be selected from the property drop down. You get this static property by activating !link. Afterwards, you can move the property to any position in the rule chain. When done, it triggers the switch to the theme the author selected for his nodes in his user profile.",
       array('!link' => l(t('Show theme option in user profile'), 'admin/settings/themekey/settings/ui'))),
     'page cache' => THEMEKEY_PAGECACHE_SUPPORTED,
     'static' => TRUE,
@@ -71,7 +70,7 @@ function themekey_ui_themekey_properties() {
  * This function implements the interface of a ThemeKey
  * mapping function but doesn't set a ThemeKey property's
  * value. It sets the global variable $custom_theme to a
- * theme directly which will cause ThemeKey to use this
+ * theme directly, which will cause ThemeKey to use this
  * theme.
  *
  * @param $nid
@@ -93,7 +92,7 @@ function themekey_ui_nid2theme($nid) {
 
   themekey_ui_nodeapi($node, 'load');
 
-  if (!empty($node->themekey_ui_theme) && themekey_check_theme_enabled($node->themekey_ui_theme)) {
+  if (!empty($node->themekey_ui_theme) && 'default' != $node->themekey_ui_theme && themekey_check_theme_enabled($node->themekey_ui_theme)) {
     $custom_theme = $node->themekey_ui_theme;
     return 'static';
   }
@@ -120,9 +119,9 @@ function themekey_ui_author2theme($nid) {
   global $custom_theme;
 
   // node_load() must not be called from hook_init().
-  // Therefor we have to execute SQL here.
+  // Therefore, we have to execute SQL here.
   if ($theme = db_result(db_query("SELECT theme FROM {node} JOIN {themekey_ui_author_theme} USING (uid) WHERE nid = %d", $nid))) {
-    if ('default' != $theme) {
+    if ('default' != $theme && themekey_check_theme_enabled($theme)) {
       $custom_theme = $theme;
       return 'static';
     }
@@ -138,9 +137,11 @@ function themekey_ui_author2theme($nid) {
 function themekey_ui_theme() {
   return array(
     'themekey_ui_table' => array(
+      'file' => 'themekey_ui_admin.inc',
       'arguments' => array('form' => NULL),
     ),
     'themekey_ui_theme_select_form' => array(
+      'file' => 'themekey_ui_admin.inc',
       'arguments' => array('form' => NULL),
     ),
   );
@@ -190,7 +191,7 @@ function themekey_ui_form_alter(&$form, $form_state, $form_id) {
     if (user_access('assign theme to own nodes') && variable_get('themekey_ui_author', 0)) {
       module_load_include('inc', 'themekey_ui', 'themekey_ui_admin');
 
-      // to avoid a sql query to load his nodes themes every time a user is loaded we do this query here
+      // to avoid a sql query to load his nodes themes every time a user is loaded, we do this query here
       $theme = FALSE;
       if (!empty($form['#uid'])) {
         $theme = db_result(db_query("SELECT theme FROM {themekey_ui_author_theme} WHERE uid = %d", $form['#uid']));

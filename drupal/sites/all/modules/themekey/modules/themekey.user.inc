@@ -1,5 +1,4 @@
 <?php
-// $Id: themekey.user.inc,v 1.4.2.5 2010/08/28 08:31:38 mkalkbrenner Exp $
 
 /**
  * @file
@@ -35,18 +34,18 @@ function themekey_user_themekey_properties() {
     'page cache' => THEMEKEY_PAGECACHE_UNSUPPORTED,
   );
   $attributes['user:language'] = array(
-    'description' => t('User: Language - The language the user has set in the settings of his profile page.
-      Format is the language code (for example "en" for english or "de" for german) that can be found on !link.',
+    'description' => t('User: Language - The language the user has set in the settings on his profile page.
+      Format is the language code (for example "en" for English or "de" for German) that can be found on !link.',
       array('!link' => l(t('!path', array('!path' => 'admin/settings/language')), 'admin/settings/language'))),
     'validator' => 'themekey_validator_language',
     'page cache' => THEMEKEY_PAGECACHE_SUPPORTED,
   );
   $attributes['user:name'] = array(
-    'description' => t('User: Name - The username of the user. See !link for your users.', array('!link' => l(t('!path', array('!path' => 'admin/user/user/list')), 'admin/user/user/list'))),
+    'description' => t('User: Name - The user\'s username. See !link for your users.', array('!link' => l(t('!path', array('!path' => 'admin/user/user/list')), 'admin/user/user/list'))),
     'page cache' => THEMEKEY_PAGECACHE_SUPPORTED,
   );
   $attributes['user:uid'] = array(
-    'description' => t('User: ID - The id of the user (uid). The user id can be found in the URL of the users profile page, "user/23" or "user/23/edit" (23 = uid). See !link for your users.',
+    'description' => t('User: ID - The id of the user (uid). The user id can be found in the URL of the user\'s profile page, "user/23" or "user/23/edit" (23 = uid). See !link for your users.',
       array('!link' => l(t('!path', array('!path' => 'admin/user/user/list')), 'admin/user/user/list'))),
     'validator' => 'themekey_validator_ctype_digit',
     'page cache' => THEMEKEY_PAGECACHE_SUPPORTED,

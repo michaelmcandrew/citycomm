@@ -1,5 +1,4 @@
 <?php
-// $Id: themekey_ui_admin.inc,v 1.6.2.1 2010/07/21 15:16:09 mkalkbrenner Exp $
 
 /**
  * @file
@@ -73,7 +72,7 @@ function themekey_ui_settings_form() {
     '#type' => 'checkbox',
     '#title' => t('Show theme option in user profile'),
     '#default_value' => variable_get('themekey_ui_author', 0),
-    '#description' => t('Assign themes from user profile. All nodes created by a user will be shown to all visitors using the theme he selected in his profile.')
+    '#description' => t('Assign themes from user profile. All nodes created by a user will be shown to all visitors using the theme she selected in her profile.')
   );
 
   $form['buttons']['submit'] = array(
@@ -191,7 +190,7 @@ function themekey_ui_pathalias(&$form) {
 
   list($id, $theme) = themekey_ui_get_path_theme($form['#alias']['dst']);
 
-  themekey_ui_theme_select_form($form, t('Theme configuration'), t('Select a theme that will be used whenever content will be requested using this path alias.'), $theme, $form['submit']['weight'] - 1);
+  themekey_ui_theme_select_form($form, t('Theme configuration'), t('Select a theme that will be used whenever content is requested using this path alias.'), $theme, $form['submit']['weight'] - 1);
 
   $form['themekey_ui_themes']['themekey_rule_id'] = array(
     '#type' => 'value',

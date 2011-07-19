@@ -1,5 +1,4 @@
 <?php
-// $Id: themekey_build.inc,v 1.14.2.5 2010/08/16 13:35:14 mkalkbrenner Exp $
 
 /**
  * @file
@@ -147,9 +146,9 @@ function themekey_scan_modules() {
  * Named wildcards in ThemeKey rules based on property
  * drupal:path are stored as serialized array in the database.
  *
- * This function deserializes those wildcards and inject them back
+ * This function deserializes those wildcards and injects them back
  * into the value of the rule. This format is needed by ThemeKey's
- * administartion interface.
+ * administration interface.
  *
  * It's the counterpart of these functions:
  * @see themekey_prepare_path()
@@ -177,7 +176,7 @@ function themekey_complete_path(&$item) {
 /**
  * Examines ThemeKey paths created by modules
  * via hook_themekey_paths() in database and
- * assignes a fit factor and a wight.
+ * assigns a fit factor and a weight.
  *
  * @see themekey_rebuild()
  *
@@ -265,16 +264,16 @@ function themekey_prepare_custom_path($path) {
 
 /**
  * Loads all ThemeKey Rules from the database.
- * Therefor it uses a recursion to build the rule chains.
+ * Therefore, it uses a recursion to build the rule chains.
  *
  * @param $parent
  *   id of the parent rule. Default is '0'.
  *   During the recursion this parameter changes.
  *
  * @param $depth
- *   Integer that represents the 'indention'
+ *   Integer that represents the 'indentation'
  *   in current rule chain. Default is '0'.
- *   During the recursion this parameter changes.
+ *   During the recursion, this parameter changes.
  *
  * @return
  *   sorted array containing all ThemeKey rules
@@ -284,7 +283,7 @@ function themekey_load_rules($parent = 0, $depth = 0) {
   static $parent_lookups = array();
 
   if (isset($parent_lookups[$parent])) {
-    // prevent endless recursion in case of malformated data in database
+    // prevent endless recursion in case of malformatted data in database
     return $properties;
   }
 
@@ -360,19 +359,19 @@ function themekey_rule_del($id) {
   if (FALSE !== $num_childs) {
     if ($num_childs > 0) {
       db_unlock_tables();
-      drupal_set_message(t('ThemeKey rule could not be deleted because it has children in the chain'), 'error');
+      drupal_set_message(t('ThemeKey rule could not be deleted, because it has children in the chain'), 'error');
     }
     else {
       $result = db_query('DELETE FROM {themekey_properties} WHERE id = %d', $id);
       db_unlock_tables();
       if (!$result) {
-        drupal_set_message(t('Error while deleteing ThemeKey rule'), 'error');
+        drupal_set_message(t('Error while deleting ThemeKey rule'), 'error');
       }
     }
   }
   else {
     db_unlock_tables();
-    drupal_set_message(t('Error while deleteing ThemeKey rule'), 'error');
+    drupal_set_message(t('Error while deleting ThemeKey rule'), 'error');
   }
 }
 
@@ -401,9 +400,9 @@ function themekey_rule_get($id) {
 
 
 /**
- * Adds or modifies a so called static rule in the
- * database. Static rules could be moved around in the chain
- * and enabled or disabled by the site administrator but the values
+ * Adds or modifies a so-called static rule in the
+ * database. Static rules can be moved around in the chain
+ * and enabled or disabled by the site administrator, but the values
  * are immutable. There's one static rule per static property.
  *
  * @param $property

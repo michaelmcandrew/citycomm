@@ -1,5 +1,4 @@
 <?php
-// $Id: themekey.taxonomy.inc,v 1.13.2.6 2010/08/28 08:31:38 mkalkbrenner Exp $
 
 /**
  * @file
@@ -39,7 +38,7 @@ function themekey_taxonomy_themekey_properties() {
     'page cache' => THEMEKEY_PAGECACHE_SUPPORTED,
   );
   $attributes['taxonomy:tid_and_childs'] = array(
-    'description' => t('Taxonomy: Term and its childs - The term id (tid) of a taxonomy term. If set all child terms of this term will be used too.'),
+    'description' => t('Taxonomy: Term and its children - The term id (tid) of a taxonomy term. If set, all child terms of this term will be used too.'),
     'validator' => 'themekey_validator_ctype_digit',
     'page cache' => THEMEKEY_PAGECACHE_UNSUPPORTED,
   );

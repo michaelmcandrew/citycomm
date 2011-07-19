@@ -1,5 +1,4 @@
 <?php
-// $Id: themekey_help.inc,v 1.2.2.9 2010/09/27 20:37:05 mkalkbrenner Exp $
 
 /**
  * @file
@@ -15,7 +14,7 @@
  *
  * @see themekey_help()
  */
-function themekey_help_tutorials_form($collapsed = TRUE) {
+function themekey_help_tutorials_form($form_state, $collapsed = TRUE) {
   $form['themekey_help_tutorials'] = array(
     '#type' => 'fieldset',
     '#title' => t('Tutorials'),
@@ -43,24 +42,24 @@ function themekey_help_tutorials_form($collapsed = TRUE) {
     '#value' =>
 '<p>' . t('Note: This tutorial uses some ThemeKey properties from an additional module called !themekey_properties_link.', array('!themekey_properties_link' => l(t('!path', array('!path' => 'ThemeKey Properties')), 'http://drupal.org/project/themekey_properties'))) . '</p>' .
 '<p>' . t("In this tutorial you'll learn how to define ThemeKey rules and how to cascade them to achieve sophisticated rule chains.") . '</p>' .
-'<p>' . t("The use case is to use a different theme during conent creation for premium users, p.e. you don't want to show advertisements or you want to show some advanced help blocks ...") . '</p>' .
-'<p>' . t('Therefor you created two user roles called "premium user" and "standard user". Using ThemeKey it\'s easy to create a rule that switches the theme in general if a user\'s role is "premium user":') . '<br />' .
+'<p>' . t("The use case is to use a different theme during content creation for premium users, e.g., you don't want to show advertisements or you want to show some advanced help blocks ...") . '</p>' .
+'<p>' . t('Therefore you created two user roles called "premium user" and "standard user". Using ThemeKey it\'s easy to create a rule that switches the theme if a user\'s role is "premium user":') . '<br />' .
 '<img src="' . $img_path . 'premium_user.png" alt="' . t('ThemeKey rule that switches the theme if the user\'s role is "premium user"') . '" /></p>' .
-'<p>' . t('The same way we can create a rule that switches the theme if a content creation form is requested. To do this for any kind of content we use ThemeKey\'s drupal:path property and it\'s wildcard feature:') . '<br />' .
+'<p>' . t('Similarly, we can also create a rule that switches the theme if a content creation form is requested. To do this for any kind of content we use ThemeKey\'s drupal:path property and its wildcard feature:') . '<br />' .
 '<img src="' . $img_path . 'create_content.png" alt="' . t('ThemeKey rule that switches the theme on content creation forms') . '" /></p>' .
-'<p>' . t('But having these two seperated rules is not what our use case described. To implement our use case we have to cascade or "chain" both rules. Using the cross in front of a rule you can move any rule up and down or indent it. The chain we need should like this:') . '<br />' .
+'<p>' . t('But having these two separate rules is not what our use case describes. To implement our use case, we have to cascade or "chain" both rules. By dragging on the cross icon in front of a rule, you can move any rule up and down or indent it. The chain we need should like this:') . '<br />' .
 '<img src="' . $img_path . 'create_content_premium_user.png" alt="' . t('ThemeKey rule chain that switches the theme on content creation forms for premium users') . '" /></p>' .
-'<p>' . t('Now using this chain ThemeKey only switches the theme on content creation forms if the current user\'s role is "premium user". Non premium users will use current system standard theme.') . '</p>' .
-'<p>' . t('You might noticed that the theme select box disapeared for the first rule as you intented the second one. That\'s because both seperated rules became one.') . '</p>' .
+'<p>' . t('Now using this chain, ThemeKey only switches the theme on content creation forms if the current user\'s role is "premium user". Non-premium users will use the current standard system theme.') . '</p>' .
+'<p>' . t('You might have noticed that the theme select box disappeared for the first rule as you indented the second one. That\'s because both separate rules became one.') . '</p>' .
 '<p>' . t('Now it\'s possible to extend our chain to use another dedicated theme on content creation forms for "standard users".') . '<br />' .
 '<img src="' . $img_path . 'create_content_premium_user_standard_user.png" alt="' . t('ThemeKey rule chain that switches to different themes on content creation forms for different user roles') . '" /></p>' .
-'<p>' . t('If you have more than these two roles in your system and you simply want use a theme for premium users and one for non premium users on content creation pages you don\'t need to add one rule per role like decribed above. In this case it\'s easier to change the latest rule we added and say any other rule than "premium user" using ThemeKey\'s not operator "!".') . '<br />' .
+'<p>' . t('If you have more than these two roles in your system and you simply want to use one theme for premium users and another for non-premium users, on content creation pages, you don\'t need to add one rule per role, as described above. In this case, it\'s easier to change the latest rule we added and say any other rule other than "premium user", using ThemeKey\'s not operator "!".') . '<br />' .
 '<img src="' . $img_path . 'create_content_premium_user_any_role.png" alt="' . t('Another ThemeKey rule chain that switches to different themes on content creation forms for different user roles') . '" /></p>' .
-'<p>' . t('Now we implemented our use case using chained ThemeKey rules and you can add more rules to ThemeKey\'s Rule Chain to implement different use cases. The only decision you have to take is the order the rules are checked by ThemeKey on every page request. To demonstrate this let\'s add another rule that switches the theme if the user uses an iPhone to access your page.') . '<br />' .
+'<p>' . t('Now that we have implemented our use case using chained ThemeKey rules, you can add more rules to ThemeKey\'s Rule Chain to implement different use cases. The only decision you have to make is the order the rules are checked by ThemeKey on every page request. To demonstrate this, let\'s add another rule that switches the theme if the user uses an iPhone to access your page.') . '<br />' .
 '<img src="' . $img_path . 'iphone_create_content_premium_user_any_role.png" alt="' . t('ThemeKey rule chain selecting special theme for iPhones') . '" /></p>' .
-'<p>' . t('What happens now is that ThemeKey switches to a special theme for iPhones as soon as the user uses such a device to access you page because ThemeKey stops processing the rules if a rule or one set of chained rules matched. This means that content creation forms are  shown using the iPhone theme as well no matter which role is assigned to the current user.') . '</p>' .
-'<p>' . t('I think that\'s a good choice. If you move the iPhone rule below the chain for the content cration form these forms will use the configured themes even on the iPhone which might not be suitable to display them.') . '</p>' .
-'<p>' . t('If you like to treat node creation forms differently even on the iPhone you should "chain" a dedicated set of rules for that.') . '<br />' .
+'<p>' . t('What happens now is that ThemeKey switches to a special theme for iPhones whenever the user accesses your page using such a device, because ThemeKey stops processing the rules if a rule, or one set of chained rules, matches. This means that content creation forms are shown using the iPhone theme, regardless of the role assigned to the current user.') . '</p>' .
+'<p>' . t('I think that\'s a good choice. If you move the iPhone rule below the chain for the content cration form, these forms will use the configured themes even on the iPhone, which might not be suitable for displaying them.') . '</p>' .
+'<p>' . t('If you\'d like to treat node creation forms differently, even on the iPhone, you should "chain" a dedicated set of rules for that.') . '<br />' .
 '<img src="' . $img_path . 'iphone_create_content_pages.png" alt="' . t('Sophisticated ThemeKey rule chain') . '" /></p>' .
 '<p>' . t('Have Fun!') . '</p>',
     );
@@ -88,11 +87,11 @@ function themekey_help_tutorials_form($collapsed = TRUE) {
 
 
 /**
- * Uses drupal's form builder to format ThemeKey's help examples
+ * Uses Drupal's form builder to format ThemeKey's help examples
  *
  * @see themekey_help()
  */
-function themekey_help_examples_form($collapsed = TRUE) {
+function themekey_help_examples_form($form_state, $collapsed = TRUE) {
   $form['themekey_help_examples'] = array(
     '#type' => 'fieldset',
     '#title' => t('Examples'),
@@ -104,12 +103,12 @@ function themekey_help_examples_form($collapsed = TRUE) {
     '#type' => 'fieldset',
     '#title' => t('Set a special theme for site administrator'),
     '#collapsible' => TRUE,
-    '#collapsed' => $form['themekey_help_examples']['#collapsed'],
+    '#collapsed' => TRUE,
   );
 
   $form['themekey_help_examples']['Set a special theme for site administrator']['item'] = array(
     '#type' => 'item',
-    '#value' => t('Create a Theme Switching Rules:') . '<pre>
+    '#value' => t('Create Theme Switching Rules:') . '<pre>
 Property: user:uid
 Operator: =
 Value: 1
@@ -121,7 +120,7 @@ Value: 1
     '#type' => 'fieldset',
     '#title' => 'TODO: add some examples using drupal:path and drupal:path:wildcard',
     '#collapsible' => TRUE,
-    '#collapsed' => $form['themekey_help_examples']['#collapsed'],
+    '#collapsed' => TRUE,
   );
 
   $form['themekey_help_examples']['TODO: add some examples using drupal:path and drupal:path:wildcard']['item'] = array(
@@ -135,11 +134,11 @@ Value: 1
 
 
 /**
- * Uses drupal's form builder to format ThemeKey's help properties
+ * Uses Drupal's form builder to format ThemeKey's help properties
  *
  * @see themekey_help()
  */
-function themekey_help_properties_form($collapsed = TRUE) {
+function themekey_help_properties_form($form_state, $collapsed = TRUE) {
   module_load_include('inc', 'themekey', 'themekey_admin');
 
   $page_cache_support_desriptions = themekey_get_page_cache_support_desriptions();
@@ -158,7 +157,7 @@ function themekey_help_properties_form($collapsed = TRUE) {
       '#type' => 'fieldset',
       '#title' => $property,
       '#collapsible' => TRUE,
-      '#collapsed' => $collapsed,
+      '#collapsed' => TRUE,
     );
 
     $form['themekey_help_properties'][$property]['item'] = array(
@@ -179,11 +178,11 @@ function themekey_help_properties_form($collapsed = TRUE) {
 
 
 /**
- * Uses drupal's form builder to format ThemeKey's help operators
+ * Uses Drupal's form builder to format ThemeKey's help operators
  *
  * @see themekey_help()
  */
-function themekey_help_operators_form($collapsed = TRUE) {
+function themekey_help_operators_form($form_state, $collapsed = TRUE) {
   $form['themekey_help_operators'] = array(
     '#type' => 'fieldset',
     '#title' => t('Operators explained'),
@@ -198,27 +197,27 @@ function themekey_help_operators_form($collapsed = TRUE) {
 
   $form['themekey_help_operators']['!'] = array(
     '#type' => 'item',
-    '#value' => t('<strong>!</strong><br />not equals'),
+    '#value' => t('<strong>!</strong><br />not equal to'),
   );
 
   $form['themekey_help_operators']['<'] = array(
     '#type' => 'item',
-    '#value' => t('<strong>&lt;</strong><br />lower than (alpha numeric values are treated in alphabetical order: "A" is lower than "B" but "B" is lower than "a")'),
+    '#value' => t('<strong>&lt;</strong><br />less than (alphanumeric values are treated in alphabetical order: "A" is less than "B", but "B" is less than "a")'),
   );
 
   $form['themekey_help_operators']['<='] = array(
     '#type' => 'item',
-    '#value' => t('<strong>&lt;=</strong><br />lower than or equal (alpha numeric values are treated in alphabetical order: "a" is lower than "b" but "B" is lower than "a" and "A" is lower than "a")'),
+    '#value' => t('<strong>&lt;=</strong><br />less than or equal to (alphanumeric values are treated in alphabetical order: "a" is less than "b" but "B" is less than "a" and "A" is less than "a")'),
   );
 
   $form['themekey_help_operators']['>'] = array(
     '#type' => 'item',
-    '#value' => t('<strong>&gt;</strong><br />greater (alpha numeric values are treated in alphabetical order: "b" is grater than "a" but "a" is greater than "B")'),
+    '#value' => t('<strong>&gt;</strong><br />greater (alphanumeric values are treated in alphabetical order: "b" is greater than "a" but "a" is greater than "B")'),
   );
 
   $form['themekey_help_operators']['=>'] = array(
     '#type' => 'item',
-    '#value' => t('<strong>=&gt;</strong><br />greater than or equal (alpha numeric values are treated in alphabetical order: "b" is grater than "a" but "a" is greater than "B" and "a" is greater than "A")'),
+    '#value' => t('<strong>=&gt;</strong><br />greater than or equal to (alphanumeric values are treated in alphabetical order: "b" is greater than "a" but "a" is greater than "B" and "a" is greater than "A")'),
   );
 
   $form['themekey_help_operators']['~'] = array(

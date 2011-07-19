@@ -1,5 +1,4 @@
 <?php
-// $Id: themekey.node.inc,v 1.10.2.5 2010/08/28 08:31:38 mkalkbrenner Exp $
 
 /**
  * @file
@@ -100,7 +99,7 @@ function themekey_node_themekey_properties() {
     'page cache' => THEMEKEY_PAGECACHE_SUPPORTED,
   );
   $attributes['node:uid'] = array(
-    'description' => t('Node: User ID - The user id (uid) of the author of the node. The user id can be found in the URL of the users profile page, "user/23" or "user/23/edit" (23 = uid). See !link for your users.',
+    'description' => t('Node: User ID - The node author\'s user id (uid). The user id can be found in the URL of the user\'s profile page, "user/23" or "user/23/edit" (23 = uid). See !link for your users.',
       array('!link' => l(t('!path', array('!path' => 'admin/user/user/list')), 'admin/user/user/list'))),
     'validator' => 'themekey_validator_ctype_digit',
     'page cache' => THEMEKEY_PAGECACHE_SUPPORTED,
@@ -451,8 +450,8 @@ function themekey_node_get_q2type($q) {
 /**
  * This function isn't needed anymore and has been removed with ThemeKey 6.x-2.0-beta2.
  * But if it's missing a fatal error occurs if you upgrade from any version before
- * 6.x-2.0-beta2 until you called update.php. That should be avoided.
- * So this function is available again and does nothing else than reminding the
+ * 6.x-2.0-beta2 until you call update.php. That should be avoided.
+ * So this function is available again and does nothing other than remind the
  * administrator to call update.php
  *
  * see http://drupal.org/node/662786
@@ -465,6 +464,6 @@ function _themekey_node_callback(&$item, &$parameters) {
   global $user;
 
   if (1 == $user->uid) {
-    drupal_set_message(t('You uploaded a new version of ThemeKey. Please !link your site!', array('!link' => l(t('update'), '/update.php'))));
+    drupal_set_message(t('You\'ve uploaded a new version of ThemeKey. Please !link your site!', array('!link' => l(t('update'), '/update.php'))));
   }
 }

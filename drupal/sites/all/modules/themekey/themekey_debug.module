@@ -1,9 +1,8 @@
 <?php
-// $Id: themekey_debug.module,v 1.2.2.1 2010/07/22 10:29:04 mkalkbrenner Exp $
 
 /**
  * @file
- * Provides a debug mode for module ThemeKey.
+ * Provides a debug mode for the ThemeKey module.
  * @see themekey.module
  *
  * @author Markus Kalkbrenner | Cocomore AG

@@ -1,4 +1,24 @@
-// $Id: CHANGELOG.txt,v 1.32.2.29 2010/10/14 20:04:16 mkalkbrenner Exp $
+ThemeKey 6.x-3.3, 2011-04-27
+----------------------------
+[#1030268] mkalkbrenner: Toggle "Property drupal:path is case sensitive" does not work; drupal:path is always case sensitive
+[#1038554] mkalkbrenner: Fixed Warning: First argument is expected to be a valid callback, 'theme_themekey_ui_theme_select_form' was given...
+[#1065878] mkalkbrenner: Error messages when activating all Themekey modules on a Standard English Drupal installation
+[#1125920] mkalkbrenner: don't set $custom_theme to 'default'
+[        ] mkalkbrenner: Integrated Print module's paths to detect node ids
+
+
+ThemeKey 6.x-3.2, 2011-01-13
+----------------------------
+[#1022166] mkalkbrenner: Call to undefined function themekey_invoke_modules() during database update when updating from an old version
+
+
+ThemeKey 6.x-3.1, 2011-01-10
+----------------------------
+[       ] mkalkbrenner, cspitzlay: fixed signature of help form functions so default value for "collapsed" works
+[#948444] mkalkbrenner: added experimental features support
+[       ] mkalkbrenner: fixed debug message constraints on settings page
+[#958184] LoMo: Edited English strings
+
 
 ThemeKey 6.x-3.0, 2010-10-14
 ----------------------------

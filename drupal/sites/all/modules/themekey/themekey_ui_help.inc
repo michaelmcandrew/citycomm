@@ -1,5 +1,4 @@
 <?php
-// $Id: themekey_ui_help.inc,v 1.2.2.3 2010/08/28 08:31:38 mkalkbrenner Exp $
 
 /**
  * @file
@@ -43,9 +42,9 @@ function themekey_ui_help_tutorials(&$form) {
 '<p>' . t('First, you must enable any themes you would like available from under !link (Administer -> Site Building -> Themes)</p>', array('!link' => l(t('!path', array('!path' => 'admin/build/themes')), 'admin/build/themes'))) .
 '<p>' . t('Once you have enabled your themes, navigate to !link (Administer -> Site Configuration -> Themekey -> Settings -> User Interface). You will see a checkbox for "Show theme option in user profile". Click on the checkbox and save your settings.</p>', array('!link' => l(t('!path', array('!path' => 'admin/settings/themekey/settings/ui')), 'admin/settings/themekey/settings/ui'))) .
 '<p>' . '<img src="' . $img_path . 'themekey_user_profiles_2.png" alt="' . t('Enabling theme selection in user profiles') . '" style="border:solid #d4e7f3 2px;" /></p>' .
-'<p>' . t('Next, you must grant permission to the roles that you would like to be able to change themes for their own content. Navigate to !link (Administer -> User Management -> Permissions) and check the boxes for "Assign theme to own nodes" to all roles you want to enable this option.</p>', array('!link' => l(t('!path', array('!path' => 'admin/user/permissions')), 'admin/user/permissions'))) . '<br />' .
+'<p>' . t('Next, you must grant permission to the roles that you would like to be able to change themes for their own content. Navigate to !link (Administer -> User Management -> Permissions) and check the boxes for "Assign theme to own nodes" for all roles you want to have this option.</p>', array('!link' => l(t('!path', array('!path' => 'admin/user/permissions')), 'admin/user/permissions'))) . '<br />' .
 '<p>' . '<img src="' . $img_path . 'themekey_user_profiles_3.png" alt="' . t('Enable correct permissions to use themekey for your users') . '" style="border:solid #d4e7f3 2px;" /></p>' .
-'<p>' . t('Once you have done this, your users can log in, navigate to My Account -> Edit and a new option will appear under their account settings. A full select list of your enabled themes will appear for them to select from. Once they have chosen a new theme, any node that is authored by this user will display the theme they have selected.</p>') .
+'<p>' . t('Once you have done this, your users can log in, navigate to My Account -> Edit, and a new option will appear under their account settings. A full select list of your enabled themes will appear for them to select from. Once they have chosen a new theme, any node that is authored by this user will display the theme they have selected.</p>') .
 '<p>' . '<img src="' . $img_path . 'themekey_user_profiles_4.png" alt="' . t('ThemeKey rule chain that switches to different themes on content creation forms for different user roles') . '" style="border:solid #d4e7f3 2px;" /></p>' .
 '<p>' . t('Have Fun!') . '</p>',
     );
